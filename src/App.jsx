@@ -1154,7 +1154,7 @@ export default function App() {
               </button>
             )}
             */}
-            {!currentClientCompany && (
+            {!currentClientCompany && !isSuperAdmin && (
               <button
                 onClick={() => setPartnerAuthModalOpen(true)}
                 title="Entrar ou cadastrar sua empresa/negócio"
