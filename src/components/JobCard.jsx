@@ -181,7 +181,7 @@ export default function JobCard({ job, isFlipped, onToggleFlip, onContact, onVie
                 <span className="truncate">{job.empresa}</span>
                 {job.seloVerificado && <VerificadoBadge />}
               </p>
-              <h3 className="nv-display max-w-[95%] truncate text-base font-bold leading-snug text-slate-900">{job.cargo}</h3>
+              <h3 className="nv-display truncate text-base font-bold leading-snug text-slate-900">{job.cargo}</h3>
             </div>
             <div className="flex flex-shrink-0 flex-col items-end gap-1">
               {isTopSalarioRule(job.salarioMax || job.salarioHora) && <TopSalarioBadge />}
