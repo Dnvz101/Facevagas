@@ -230,14 +230,21 @@ export function ComprasTab({ shoppingList, setShoppingList }) {
               <span className={`nv-body min-w-0 flex-1 truncate text-[12px] font-medium ${item.comprado ? "text-slate-400 line-through" : "text-slate-800"}`}>
                 {item.nome}
               </span>
-              <input
-                type="number"
-                value={item.valor === 0 ? "" : item.valor}
-                onChange={(e) => updateValor(item.id, e.target.value === "" ? 0 : Number(e.target.value))}
-                placeholder="0"
-                title="Valor (¥)"
-                className="nv-body w-16 flex-shrink-0 rounded-lg border border-slate-200 px-1.5 py-1 text-[11px] text-slate-700 outline-none focus:border-blue-400"
-              />
+              <div className="flex-shrink-0 text-center">
+                <label className="nv-body block text-[8.5px] font-semibold uppercase tracking-wide text-slate-400">Valor (¥)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={item.valor === 0 ? "" : item.valor}
+                  onChange={(e) => {
+                    const digitsOnly = e.target.value.replace(/\D/g, "");
+                    updateValor(item.id, digitsOnly === "" ? 0 : Number(digitsOnly));
+                  }}
+                  placeholder="0"
+                  className="nv-body w-16 rounded-lg border border-slate-200 px-1.5 py-1 text-[11px] text-slate-700 outline-none focus:border-blue-400"
+                />
+              </div>
               <button onClick={() => remove(item.id)} className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-rose-400 hover:bg-rose-50">
                 <Trash2 className="h-3 w-3" />
               </button>

@@ -40,6 +40,7 @@ import PartnerManagementModal from "./components/PartnerManagementModal.jsx";
 import IosInstallHelpModal from "./components/IosInstallHelpModal.jsx";
 import LegalModal from "./components/LegalModal.jsx";
 import SiteFooter from "./components/SiteFooter.jsx";
+import Pagination from "./components/Pagination.jsx";
 
 import { usePermissions } from "./hooks/usePermissions.js";
 
@@ -55,7 +56,7 @@ import {
   fetchServiceCategoriesFromDB, upsertServiceCategoriesInDB,
   fetchServiceListingsFromDB, insertServiceListingToDB, updateServiceListingInDB, deleteServiceListingFromDB,
   fetchPlanosFromDB, upsertPlanosInDB,
-  fetchPartnersFromDB, upsertPartnersInDB,
+  fetchPartnersFromDB, upsertPartnersInDB, deletePartnerFromDB,
 } from "./lib/supabase.js";
 import { personalStorageGet, personalStorageSet } from "./lib/personalStorage.js";
 
@@ -614,6 +615,24 @@ export default function App() {
     });
   }, [sortedJobs, filters, favoriteJobIds]);
 
+  // Paginação — 50 vagas por página, em vez de rolagem infinita.
+  // Sempre volta pra página 1 quando o filtro muda.
+  const JOBS_PER_PAGE = 50;
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(filteredJobs.length / JOBS_PER_PAGE));
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+  const pageJobs = useMemo(() => {
+    const start = (currentPage - 1) * JOBS_PER_PAGE;
+    return filteredJobs.slice(start, start + JOBS_PER_PAGE);
+  }, [filteredJobs, currentPage]);
+  const goToPage = (n) => {
+    const clamped = Math.min(Math.max(1, n), totalPages);
+    setCurrentPage(clamped);
+    window.scrollTo({ top: 0, behavior: "auto" });
+  };
+
   // Só conta o clique — a navegação em si agora é feita pelo próprio
   // <a href> do botão (nativo, mais confiável contra bloqueio de
   // pop-up de navegador desktop dentro de iframe do que window.open()
@@ -979,6 +998,35 @@ export default function App() {
     setRegisteredPartners((prev) => prev.map((p) => (p.id === partnerId ? { ...p, planKey: newPlanKey } : p)));
   };
 
+  // Renomeia o parceiro E propaga o novo nome pras vagas já publicadas
+  // por ele (o vínculo vaga↔empresa é feito comparando o texto do
+  // nome, então sem essa propagação as vagas antigas ficariam
+  // "órfãs", continuando com o nome velho pra sempre).
+  const handleRenamePartner = (partnerId, newName) => {
+    const partner = registeredPartners.find((p) => p.id === partnerId);
+    if (!partner) return;
+    const oldName = partner.name;
+    setRegisteredPartners((prev) => prev.map((p) => (p.id === partnerId ? { ...p, name: newName } : p)));
+
+    const jobIdsDaEmpresa = jobs.filter((j) => j.empresa === oldName).map((j) => j.id);
+    setJobs((prev) => prev.map((j) => (j.empresa === oldName ? { ...j, empresa: newName } : j)));
+    if (dbStatus === "connected" && jobIdsDaEmpresa.length > 0) {
+      Promise.all(jobIdsDaEmpresa.map((id) => updateJobInDB(id, { empresa: newName }))).catch((err) =>
+        console.error("Falha ao propagar novo nome pras vagas:", err)
+      );
+    }
+  };
+
+  // Exclui o parceiro (login para de funcionar). NÃO apaga as vagas já
+  // publicadas por ele — ficam no site como estão hoje, só sem conta
+  // associada.
+  const handleDeletePartner = (partnerId) => {
+    setRegisteredPartners((prev) => prev.filter((p) => p.id !== partnerId));
+    if (dbStatus === "connected") {
+      deletePartnerFromDB(partnerId).catch((err) => console.error("Falha ao excluir parceiro:", err));
+    }
+  };
+
   // Abre uma ferramenta do Painel Admin direto pela chave do adminTab
   // (publicador/planos/comunicados/vagas) — chamado pelo AdminSwitcherMenu.
   const handleOpenAdminTool = (key) => {
@@ -1165,21 +1213,24 @@ export default function App() {
             {filteredJobs.length === 0 ? (
               <p className="nv-body py-8 text-center text-[13px] text-slate-400">Nenhuma vaga encontrada com esses filtros.</p>
             ) : (
-              filteredJobs.map((job) => (
-                <JobCard
-                  key={job.id}
-                  job={job}
-                  isFlipped={flippedIds.has(job.id)}
-                  onToggleFlip={() => handleToggleFlip(job.id)}
-                  onContact={handleContact}
-                  onView={handleJobView}
-                  isTop={job.isFixado}
-                  isHighlighted={highlightedJobId === job.id}
-                  onSimulate={handleOpenCalculator}
-                  isFavorited={favoriteJobIds.has(job.id)}
-                  onToggleFavorite={handleToggleFavorite}
-                />
-              ))
+              <>
+                {pageJobs.map((job) => (
+                  <JobCard
+                    key={job.id}
+                    job={job}
+                    isFlipped={flippedIds.has(job.id)}
+                    onToggleFlip={() => handleToggleFlip(job.id)}
+                    onContact={handleContact}
+                    onView={handleJobView}
+                    isTop={job.isFixado}
+                    isHighlighted={highlightedJobId === job.id}
+                    onSimulate={handleOpenCalculator}
+                    isFavorited={favoriteJobIds.has(job.id)}
+                    onToggleFavorite={handleToggleFavorite}
+                  />
+                ))}
+                <Pagination currentPage={currentPage} totalPages={totalPages} onGoToPage={goToPage} />
+              </>
             )}
           </div>
         )}
@@ -1379,6 +1430,8 @@ export default function App() {
         registeredPartners={registeredPartners}
         onToggleVerificado={handleToggleVerificado}
         onChangePlano={handleChangePartnerPlano}
+        onRename={handleRenamePartner}
+        onDelete={handleDeletePartner}
       />
 
       <SalaryCalculatorModal

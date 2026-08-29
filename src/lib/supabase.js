@@ -380,6 +380,12 @@ export const supabaseAdapter = {
       prefer: "resolution=merge-duplicates,return=minimal",
     });
   },
+  // upsertPartners (acima) NUNCA apaga linha nenhuma — é um upsert puro
+  // (insere/atualiza por ID). Excluir um parceiro de verdade do banco
+  // precisa desse DELETE explícito.
+  async deletePartner(id) {
+    await supabaseRequest(`parceiros?id=eq.${id}`, { method: "DELETE", prefer: "return=minimal" });
+  },
 };
 
 
@@ -417,3 +423,4 @@ export async function fetchPlanosFromDB() { return supabaseAdapter.fetchPlanos()
 export async function upsertPlanosInDB(planos) { return supabaseAdapter.upsertPlanos(planos); }
 export async function fetchPartnersFromDB() { return supabaseAdapter.fetchPartners(); }
 export async function upsertPartnersInDB(partners) { return supabaseAdapter.upsertPartners(partners); }
+export async function deletePartnerFromDB(id) { return supabaseAdapter.deletePartner(id); }
