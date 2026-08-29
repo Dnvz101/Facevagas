@@ -38,6 +38,8 @@ import PartnerAuthModal from "./components/PartnerAuthModal.jsx";
 import AdminSwitcherMenu from "./components/AdminSwitcherMenu.jsx";
 import PartnerManagementModal from "./components/PartnerManagementModal.jsx";
 import IosInstallHelpModal from "./components/IosInstallHelpModal.jsx";
+import LegalModal from "./components/LegalModal.jsx";
+import SiteFooter from "./components/SiteFooter.jsx";
 
 import { usePermissions } from "./hooks/usePermissions.js";
 
@@ -143,6 +145,7 @@ export default function App() {
   const [installPromptEvent, setInstallPromptEvent] = useState(null);
   const [isStandaloneApp, setIsStandaloneApp] = useState(false);
   const [showIosInstallHelp, setShowIosInstallHelp] = useState(false);
+  const [legalModalOpen, setLegalModalOpen] = useState(null); // null | "termos" | "privacidade" | "reembolso"
   const isIosDevice = useMemo(() => /iphone|ipad|ipod/i.test(navigator.userAgent), []);
 
   useEffect(() => {
@@ -1349,6 +1352,8 @@ export default function App() {
         )}
       </main>
 
+      <SiteFooter onOpenLegal={setLegalModalOpen} />
+
       <PartnerAuthModal
         isOpen={partnerAuthModalOpen}
         onClose={() => setPartnerAuthModalOpen(false)}
@@ -1383,6 +1388,8 @@ export default function App() {
       />
 
       <IosInstallHelpModal isOpen={showIosInstallHelp} onClose={() => setShowIosInstallHelp(false)} />
+
+      <LegalModal page={legalModalOpen} onClose={() => setLegalModalOpen(null)} />
 
       <WhatsAppAlertModal
         isOpen={alertModalOpen}

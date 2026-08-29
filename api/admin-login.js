@@ -31,8 +31,14 @@ export default async function handler(req, res) {
   const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-    console.error("admin-login: variáveis de ambiente do Supabase não configuradas na Vercel.");
-    return res.status(500).json({ success: false, error: "Configuração do servidor incompleta." });
+    // Diagnóstico temporário: diz exatamente qual variável está faltando,
+    // em vez de uma mensagem genérica — reverter pra mensagem genérica
+    // depois de resolver (não é sensível, mas não precisa ficar exposto).
+    const faltando = [];
+    if (!SUPABASE_URL) faltando.push("VITE_SUPABASE_URL");
+    if (!SERVICE_ROLE_KEY) faltando.push("SUPABASE_SERVICE_ROLE_KEY");
+    console.error("admin-login: variáveis faltando:", faltando.join(", "));
+    return res.status(500).json({ success: false, error: `Faltando no servidor: ${faltando.join(", ")}` });
   }
 
   try {

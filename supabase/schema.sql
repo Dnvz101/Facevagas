@@ -60,6 +60,14 @@ create table if not exists public.vagas (
 -- ---------- MIGRAÇÃO (só necessária se "vagas" já existia SEM essas
 -- colunas — se você já rodou este arquivo uma vez, pode ignorar; o "if
 -- not exists" já cobre isso) ----------
+-- Selos principais — cobertos aqui também com "if not exists" porque,
+-- se a tabela "vagas" já existia de uma versão bem antiga do projeto
+-- (antes desse schema.sql consolidado), o "create table if not exists"
+-- lá em cima não recria nada, e essas colunas podem estar faltando.
+alter table public.vagas add column if not exists fixado boolean not null default false;
+alter table public.vagas add column if not exists top_salario boolean not null default false;
+alter table public.vagas add column if not exists recomendado boolean not null default false;
+alter table public.vagas add column if not exists urgente boolean not null default false;
 alter table public.vagas add column if not exists selo_verificado boolean not null default false;
 alter table public.vagas add column if not exists salario_max integer;
 alter table public.vagas add column if not exists views integer not null default 0;
