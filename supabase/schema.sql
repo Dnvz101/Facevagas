@@ -211,6 +211,8 @@ create table if not exists public.planos (
   id text primary key,                            -- 'gratis' | 'start' | 'pro' | 'master'
   label text not null,
   preco integer not null default 0,                -- em ienes
+  preco_original integer,                          -- preço "de" riscado, pra mostrar promoção (null = não mostra)
+  stripe_link text default '',                     -- link de pagamento (Payment Link) do Stripe pra esse plano
   cota_topo integer not null default 0,             -- quantas vagas podem ficar em "Destaque" (🔥) — consome o ciclo de 7 dias
   cota_recomendado integer not null default 0,      -- quantas vagas podem ter o selo Recomendado (⭐) — 999 = ilimitado
   cota_urgente integer not null default 0,          -- quantas vagas podem ter o selo Urgente (⚡) — 999 = ilimitado
@@ -219,6 +221,9 @@ create table if not exists public.planos (
   metricas boolean not null default false,          -- acesso ao painel de Métricas Avançadas (Início da Área do Cliente)
   updated_at timestamptz not null default now()
 );
+
+alter table public.planos add column if not exists preco_original integer;
+alter table public.planos add column if not exists stripe_link text default '';
 
 insert into public.planos (id, label, preco, cota_topo, cota_recomendado, cota_urgente, ia_liberada, selo_verificado, metricas)
 values

@@ -1,17 +1,19 @@
 // ---------------------------------------------------------------
-// PlanosManager — Admin: editor de preço/cota dos planos + simulador
-// de "conta atual em qual plano" (teste local, não afeta vagas
-// publicadas de verdade).
+// PlanosManager — Admin: editor de preço/cota dos planos (agora
+// também com preço "de" riscado e link de pagamento do Stripe) +
+// simulador de "conta atual em qual plano" (teste local, não afeta
+// vagas publicadas de verdade).
 // ---------------------------------------------------------------
 
 import { Settings, CreditCard, BadgeCheck, Loader2 } from "lucide-react";
 import { PLANOS_ORDER } from "../config/plans.js";
 
 export default function PlanosManager({ planos, setPlanos, savingPlanos, planKey, setPlanKey, quotaUsage }) {
+  const STRING_FIELDS = ["label", "stripeLink"];
   const updatePlano = (id, field, value) => {
     setPlanos((prev) => ({
       ...prev,
-      [id]: { ...prev[id], [field]: field === "label" ? value : Number(value) || 0 },
+      [id]: { ...prev[id], [field]: STRING_FIELDS.includes(field) ? value : Number(value) || 0 },
     }));
   };
 
@@ -81,9 +83,22 @@ export default function PlanosManager({ planos, setPlanos, savingPlanos, planKey
               />
               <div className="grid grid-cols-2 gap-2">
                 {numberField(id, "preco", "Preço (¥)")}
+                {numberField(id, "precoOriginal", "Preço \"de\" riscado (¥) — 0 = não mostra")}
                 {numberField(id, "cotaTopo", "Cota Destaque")}
                 {numberField(id, "cotaRecomendado", "Cota Recomendado (999 = ilimitado)")}
                 {numberField(id, "cotaUrgente", "Cota Urgente (999 = ilimitado)")}
+              </div>
+              <div className="mt-2">
+                <label className="nv-body mb-1 block text-[10px] font-semibold text-slate-400">Link de pagamento (Stripe)</label>
+                <input
+                  value={planos[id].stripeLink || ""}
+                  onChange={(e) => updatePlano(id, "stripeLink", e.target.value)}
+                  placeholder="https://buy.stripe.com/..."
+                  className="nv-body w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-[12px] text-slate-800 outline-none focus:border-blue-400"
+                />
+                <p className="nv-body mt-1 text-[10px] text-slate-400">
+                  {planos[id].stripeLink ? "✔️ Ativo — o botão \"Quero este\" já abre o Stripe." : "Vazio — o botão \"Quero este\" ainda abre o WhatsApp."}
+                </p>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-4">
                 <label className="nv-body flex items-center gap-1.5 text-[11px] font-medium text-slate-600">

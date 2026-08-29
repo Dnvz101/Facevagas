@@ -1,6 +1,8 @@
 // ---------------------------------------------------------------
 // PlanComparisonCards — colunas de plano lado a lado (scroll
-// horizontal), botão "Quero este" abre WhatsApp com furikomi manual.
+// horizontal). Botão "Quero este" abre o Stripe (Payment Link) quando
+// configurado; senão cai no WhatsApp (furikomi manual) como antes.
+// Mostra o preço "de" riscado quando configurado no Admin.
 // ---------------------------------------------------------------
 
 import { CheckCircle2, X, MessageCircle } from "lucide-react";
@@ -46,9 +48,14 @@ export default function PlanComparisonCards({ planos, currentPlanKey, companyNam
                 </p>
               )}
               <p className="nv-display text-[14px] font-extrabold text-slate-900">{plano.label}</p>
-              <p className="nv-body mb-3 text-[11px] text-slate-500">
-                {plano.preco > 0 ? `¥${formatYen(plano.preco)}/mês` : "Grátis"}
-              </p>
+              <div className="mb-3">
+                {plano.precoOriginal > plano.preco && (
+                  <p className="nv-body text-[10px] text-slate-400 line-through">¥{formatYen(plano.precoOriginal)}/mês</p>
+                )}
+                <p className="nv-body text-[11px] text-slate-500">
+                  {plano.preco > 0 ? `¥${formatYen(plano.preco)}/mês` : "Grátis"}
+                </p>
+              </div>
 
               <div className="space-y-2 border-t border-slate-100 pt-2.5">
                 {FEATURES.map(({ key, label, render }) => {
@@ -74,6 +81,15 @@ export default function PlanComparisonCards({ planos, currentPlanKey, companyNam
                 <div className="nv-body mt-3 flex items-center justify-center rounded-xl bg-slate-100 py-2 text-[11px] font-semibold text-slate-400">
                   Plano atual
                 </div>
+              ) : plano.stripeLink ? (
+                <a
+                  href={plano.stripeLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="nv-body mt-3 flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 py-2 text-[11px] font-bold text-white hover:bg-blue-700"
+                >
+                  💳 Quero este
+                </a>
               ) : (
                 <a
                   href={waLinkFor(plano)}

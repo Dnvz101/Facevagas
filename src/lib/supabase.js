@@ -317,6 +317,8 @@ export const supabaseAdapter = {
       planos[r.id] = {
         label: r.label,
         preco: r.preco,
+        precoOriginal: r.preco_original || null,
+        stripeLink: r.stripe_link || "",
         cotaTopo: r.cota_topo,
         cotaRecomendado: r.cota_recomendado,
         cotaUrgente: r.cota_urgente,
@@ -332,6 +334,8 @@ export const supabaseAdapter = {
       id,
       label: p.label,
       preco: p.preco,
+      preco_original: p.precoOriginal || null,
+      stripe_link: p.stripeLink || "",
       cota_topo: p.cotaTopo,
       cota_recomendado: p.cotaRecomendado,
       cota_urgente: p.cotaUrgente,
