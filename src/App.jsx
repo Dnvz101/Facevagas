@@ -1352,7 +1352,13 @@ export default function App() {
             {adminTab === "vagas" && (
               <div className="space-y-5">
                 <JSONImporter dbStatus={dbStatus} jobs={jobs} onImported={handleBulkImport} />
-                <JobsTable jobs={jobs} onToggleBadge={handleToggleBadge} onDelete={handleDelete} canUseBadge={canUseBadge} showNovoBadge onTogglePreenchida={handleTogglePreenchida} onToggleArquivada={handleToggleArquivada} />
+                {/* canUseBadge aqui é sempre "true" de propósito —
+                    "Todas as Vagas" é a ferramenta de gerenciamento
+                    geral do Super Admin, não deve respeitar cota de
+                    plano nenhuma (diferente do Publicador Mágico do
+                    Admin, que simula de propósito a experiência de
+                    uma empresa naquele plano). */}
+                <JobsTable jobs={jobs} onToggleBadge={handleToggleBadge} onDelete={handleDelete} canUseBadge={() => true} showNovoBadge onTogglePreenchida={handleTogglePreenchida} onToggleArquivada={handleToggleArquivada} />
               </div>
             )}
 
