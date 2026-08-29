@@ -1,0 +1,13 @@
+VITE_SUPABASE_URL=https://mujjdqjjhzanwaldgymt.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11ampkcWpqaHphbndhbGRneW10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0NjIwMjMsImV4cCI6MjEwMzAzODAyM30._wUNZE5CjnXes0d74uM0Hz33ML1jCn8aLkjhHJcKvfs
+
+# ⚠️ FALTA PREENCHER — pega isso no painel do Supabase em:
+# Project Settings → API → "service_role" (NÃO é a anon key, é uma
+# outra, secreta, que ignora as regras de RLS). Sem ela, o login de
+# Admin não funciona. NUNCA leva o prefixo VITE_ — se levasse, iria
+# parar no navegador de qualquer visitante, e essa chave abre TUDO.
+SUPABASE_SERVICE_ROLE_KEY=
+
+# Anthropic — preencha com sua chave real antes de usar o Publicador Mágico.
+# NUNCA leva o prefixo VITE_ de propósito (fica só no servidor).
+ANTHROPIC_API_KEY=
