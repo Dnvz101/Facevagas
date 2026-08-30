@@ -865,6 +865,46 @@ export default function App() {
   // ⚠️ Isso NUNCA entra em nenhuma métrica hoje: como depende só da
   // empresa lembrar de marcar, um número baseado nisso seria enganoso
   // (vaga preenchida sem ninguém marcar continuaria contando como aberta).
+  // "Modo Inicial" — enquanto não tem anunciante de verdade, distribui
+  // selos aleatórios em 10 vagas escolhidas ao acaso, só pra dar uma
+  // amostra visual de como o site fica com selo pra quem for anunciar.
+  // Reseta TODOS os selos primeiro (evita acumular de clique em
+  // clique) e sorteia de novo do zero. NÃO respeita cota de plano —
+  // é modo de demonstração, não uso real de empresa paga.
+  const handleApplyModoInicial = () => {
+    if (jobs.length === 0) return;
+    const ok = window.confirm(
+      "Isso vai LIMPAR todos os selos manuais de todas as vagas e sortear selos aleatórios em 10 vagas novas. Continuar?"
+    );
+    if (!ok) return;
+
+    const BADGE_KEYS = ["isFixado", "isRecomendado", "isUrgente", "isNovo", "seloVerificado"];
+    const shuffled = [...jobs].sort(() => Math.random() - 0.5);
+    const chosenIds = new Set(shuffled.slice(0, Math.min(10, jobs.length)).map((j) => j.id));
+    const now = Date.now();
+
+    const patchesById = {};
+    jobs.forEach((j) => {
+      const clearPatch = { isFixado: false, isRecomendado: false, isUrgente: false, isNovo: false, seloVerificado: false, destaqueAtivadoEm: null, novoAtivadoEm: null };
+      if (!chosenIds.has(j.id)) {
+        patchesById[j.id] = clearPatch;
+        return;
+      }
+      const randomKey = BADGE_KEYS[Math.floor(Math.random() * BADGE_KEYS.length)];
+      const patch = { ...clearPatch, [randomKey]: true };
+      if (randomKey === "isFixado") patch.destaqueAtivadoEm = now;
+      if (randomKey === "isNovo") patch.novoAtivadoEm = now;
+      patchesById[j.id] = patch;
+    });
+
+    setJobs((prev) => prev.map((j) => ({ ...j, ...patchesById[j.id] })));
+    if (dbStatus === "connected") {
+      Object.entries(patchesById).forEach(([id, patch]) => {
+        updateJobInDB(id, patch).catch((err) => console.error("Falha ao aplicar Modo Inicial:", err));
+      });
+    }
+  };
+
   const handleTogglePreenchida = (id) => {
     const job = jobs.find((j) => j.id === id);
     if (!job) return;
@@ -1371,6 +1411,22 @@ export default function App() {
             {adminTab === "vagas" && (
               <div className="space-y-5">
                 <JSONImporter dbStatus={dbStatus} jobs={jobs} onImported={handleBulkImport} />
+
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+                  <p className="nv-display flex items-center gap-1.5 text-[13px] font-bold text-amber-800">
+                    🎲 Modo Inicial
+                  </p>
+                  <p className="nv-body mt-1 text-[11.5px] leading-relaxed text-amber-700">
+                    Enquanto não tem empresa pagante ainda, sorteia selos aleatórios em 10 vagas — só pra dar uma amostra visual de como o site fica com selo, pra quem for anunciar. Limpa os selos manuais das outras vagas antes de sortear de novo (não acumula clique após clique).
+                  </p>
+                  <button
+                    onClick={handleApplyModoInicial}
+                    className="nv-body mt-3 rounded-lg bg-amber-600 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-amber-700"
+                  >
+                    Sortear selos em 10 vagas
+                  </button>
+                </div>
+
                 {/* canUseBadge aqui é sempre "true" de propósito —
                     "Todas as Vagas" é a ferramenta de gerenciamento
                     geral do Super Admin, não deve respeitar cota de
