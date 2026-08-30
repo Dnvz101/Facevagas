@@ -212,15 +212,17 @@ export default function JobCard({ job, isFlipped, onToggleFlip, onContact, onVie
               <Info className="h-3 w-3 flex-shrink-0" /> Toque para ver a descrição completa
             </p>
             <div className="flex flex-shrink-0 items-center gap-1.5">
-              <a
-                href={waLink || "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => { stop(e); onContact(job.id, waLink); }}
-                className="flex items-center gap-1.5 rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-semibold text-white shadow-sm"
-              >
-                <WhatsAppIcon className="h-3 w-3 animate-pulse" /> WhatsApp
-              </a>
+              {waLink && (
+                <a
+                  href={waLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => { stop(e); onContact(job.id, waLink); }}
+                  className="flex items-center gap-1.5 rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-semibold text-white shadow-sm"
+                >
+                  <WhatsAppIcon className="h-3 w-3 animate-pulse" /> WhatsApp
+                </a>
+              )}
               <button
                 onClick={handleShare}
                 title="Compartilhar vaga"
