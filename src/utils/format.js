@@ -6,8 +6,18 @@ export function toWhatsAppLink(raw) {
   // scraper confundiu o campo "whatsapp" com o link da própria
   // página de origem (ex: jobsonline.jp) fazia o botão "WhatsApp"
   // abrir/compartilhar o site errado em vez de puxar uma conversa.
+  // ⚠️ Usa a API de URL do navegador pra checar o domínio de verdade
+  // (não um regex de texto) — uma tentativa anterior com regex tinha
+  // um erro sutil que rejeitava até link de WhatsApp válido, porque
+  // "https://wa.me/..." tem "//" antes do domínio, não ".".
   if (/^https?:\/\//i.test(raw)) {
-    return /(?:^|\.)(?:wa\.me|whatsapp\.com)/i.test(raw) ? raw : null;
+    try {
+      const host = new URL(raw).hostname.toLowerCase();
+      const isWhatsApp = host === "wa.me" || host.endsWith(".wa.me") || host === "whatsapp.com" || host.endsWith(".whatsapp.com");
+      return isWhatsApp ? raw : null;
+    } catch {
+      return null; // URL malformada — mais seguro esconder o botão do que arriscar
+    }
   }
   const digits = raw.replace(/\D/g, "");
   if (!digits) return null;

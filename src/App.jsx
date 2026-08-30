@@ -616,11 +616,19 @@ export default function App() {
   }, [sortedJobs, filters, favoriteJobIds]);
 
   // Paginação — 50 vagas por página, em vez de rolagem infinita.
-  // Sempre volta pra página 1 quando o filtro muda.
+  // Sempre volta pra página 1 quando o filtro muda — EXCEÇÃO: quando
+  // handleGoToJob (clique no Ranking) já calculou a página certa de
+  // propósito, essa flag avisa o efeito abaixo pra não sobrescrever
+  // com "página 1" de novo logo em seguida.
+  const skipPageResetRef = useRef(false);
   const JOBS_PER_PAGE = 50;
   const [currentPage, setCurrentPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(filteredJobs.length / JOBS_PER_PAGE));
   useEffect(() => {
+    if (skipPageResetRef.current) {
+      skipPageResetRef.current = false;
+      return;
+    }
     setCurrentPage(1);
   }, [filters]);
   const pageJobs = useMemo(() => {
@@ -744,7 +752,18 @@ export default function App() {
   const highlightTimerRef = useRef(null);
   const handleGoToJob = (jobId) => {
     setTab("vagas");
-    setFilters({ sexo: "todos", provincia: "todas", nihongo: "todos" });
+    skipPageResetRef.current = true;
+    setFilters({ sexo: "todos", provincia: "todas", nihongo: "todos", favoritas: false });
+
+    // Descobre em qual PÁGINA essa vaga cai — sem isso, a paginação
+    // corta a vaga fora da primeira página e a rolagem nunca acha o
+    // elemento. Os filtros acima resetam pra "mostrar tudo", então a
+    // posição em sortedJobs já reflete a lista certa.
+    const idx = sortedJobs.findIndex((j) => j.id === jobId);
+    if (idx >= 0) {
+      setCurrentPage(Math.floor(idx / JOBS_PER_PAGE) + 1);
+    }
+
     setFlippedIds((prev) => new Set(prev).add(jobId));
 
     setHighlightedJobId(jobId);
