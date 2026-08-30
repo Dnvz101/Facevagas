@@ -11,6 +11,7 @@
 // ---------------------------------------------------------------
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { Analytics } from "@vercel/analytics/react";
 import {
   Sun, Moon, LogIn, Calculator, LogOut, X, Bell, MessageCircle,
   Briefcase, TrendingUp, Users, Building2,
@@ -1524,6 +1525,8 @@ export default function App() {
       <IosInstallHelpModal isOpen={showIosInstallHelp} onClose={() => setShowIosInstallHelp(false)} />
 
       <LegalModal page={legalModalOpen} onClose={() => setLegalModalOpen(null)} />
+
+      <Analytics />
 
       <WhatsAppAlertModal
         isOpen={alertModalOpen}
