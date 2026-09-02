@@ -123,7 +123,22 @@ export const BENEFIT_KEYWORDS = [
   { re: /hora\s*extra/i, tag: "Hora extra disponível" },
 ];
 
-export const KNOWN_PROVINCIAS_RE = /\b(Aichi|Shizuoka|Gifu|Mie|Kanagawa|T[oó]quio|Tokyo|Saitama|Chiba|Osaka|Gunma|Ibaraki|Hyogo|Kyoto)\b/i;
+// Lista completa das 47 províncias oficiais do Japão — evita ficar
+// adicionando província uma por uma toda vez que aparece um caso não
+// coberto (já aconteceu com "Shiga" faltando na lista antiga).
+// "Tóquio" e "Tokyo" ficam os dois de propósito — o scraper às vezes
+// manda em português, às vezes em inglês/romaji.
+export const KNOWN_PROVINCIAS = [
+  "Hokkaido", "Aomori", "Iwate", "Miyagi", "Akita", "Yamagata", "Fukushima",
+  "Ibaraki", "Tochigi", "Gunma", "Saitama", "Chiba", "Tóquio", "Tokyo", "Kanagawa",
+  "Niigata", "Toyama", "Ishikawa", "Fukui", "Yamanashi", "Nagano",
+  "Gifu", "Shizuoka", "Aichi", "Mie",
+  "Shiga", "Kyoto", "Osaka", "Hyogo", "Nara", "Wakayama",
+  "Tottori", "Shimane", "Okayama", "Hiroshima", "Yamaguchi",
+  "Tokushima", "Kagawa", "Ehime", "Kochi",
+  "Fukuoka", "Saga", "Nagasaki", "Kumamoto", "Oita", "Miyazaki", "Kagoshima", "Okinawa",
+];
+export const KNOWN_PROVINCIAS_RE = new RegExp(`\\b(${KNOWN_PROVINCIAS.join("|")})\\b`, "i");
 
 // Lista "oficial" de nomes de província, pra distinguir "Aichi" (nome
 // único e limpo) de "Aichi e Mie" / "diversas cidades · Aichi e Mie"
@@ -132,7 +147,6 @@ export const KNOWN_PROVINCIAS_RE = /\b(Aichi|Shizuoka|Gifu|Mie|Kanagawa|T[oó]qu
 // misturariam dado de estados diferentes debaixo de uma "província"
 // que não existe de verdade. A vaga continua aparecendo normal na
 // lista pública, só fica de fora desse tipo de agregação.
-export const KNOWN_PROVINCIAS = ["Aichi", "Shizuoka", "Gifu", "Mie", "Kanagawa", "Tóquio", "Tokyo", "Saitama", "Chiba", "Osaka", "Gunma", "Ibaraki", "Hyogo", "Kyoto"];
 export function isSingleKnownProvince(provincia) {
   const p = (provincia || "").trim().toLowerCase();
   return KNOWN_PROVINCIAS.some((k) => k.toLowerCase() === p);
@@ -142,9 +156,10 @@ export function isSingleKnownProvince(provincia) {
 // como "AICHI KEN", "aichi-ken", "Aichi Prefecture" pro nome limpo
 // ("Aichi"), sem depender de digitar tudo igual. Se não reconhecer
 // nada da lista oficial (ex: veio um texto de outro país por engano,
-// tipo "Santa Fe"), devolve o texto original sem inventar nada — essa
-// vaga só não aparece no dropdown de filtro (fica de fora da lista de
-// opções, mas continua visível normalmente em "Todas").
+// tipo "Santa Fe", ou um texto cortado pela metade tipo "Shi"),
+// devolve o texto original sem inventar nada — essa vaga só não
+// aparece no dropdown de filtro (fica de fora da lista de opções,
+// mas continua visível normalmente em "Todas").
 export function normalizeProvincia(raw) {
   if (!raw) return raw;
   const cleaned = raw.trim().replace(/[-\s]?ken$/i, "").replace(/\s+prefecture$/i, "").trim();
