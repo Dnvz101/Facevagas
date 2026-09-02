@@ -138,6 +138,20 @@ export function isSingleKnownProvince(provincia) {
   return KNOWN_PROVINCIAS.some((k) => k.toLowerCase() === p);
 }
 
+// Normaliza texto de província vindo do scraper — corrige variações
+// como "AICHI KEN", "aichi-ken", "Aichi Prefecture" pro nome limpo
+// ("Aichi"), sem depender de digitar tudo igual. Se não reconhecer
+// nada da lista oficial (ex: veio um texto de outro país por engano,
+// tipo "Santa Fe"), devolve o texto original sem inventar nada — essa
+// vaga só não aparece no dropdown de filtro (fica de fora da lista de
+// opções, mas continua visível normalmente em "Todas").
+export function normalizeProvincia(raw) {
+  if (!raw) return raw;
+  const cleaned = raw.trim().replace(/[-\s]?ken$/i, "").replace(/\s+prefecture$/i, "").trim();
+  const match = KNOWN_PROVINCIAS.find((k) => k.toLowerCase() === cleaned.toLowerCase());
+  return match || raw.trim();
+}
+
 // Varre texto livre atrás de valores em ¥: primeiro procura uma FAIXA
 // plausível de salário por hora ("¥1.500 ~ ¥1.600/h", "¥1.500-1.600/h");
 // se achar, os dois números viram salarioHora/salarioMax e são retirados
@@ -269,7 +283,7 @@ export function mapScrapedJob(item) {
     empresa: (item.empresa || "").trim(),
     cargo: (item.cargo || "").trim(),
     cidade: (item.cidade || "").trim(),
-    provincia: (item.provincia || "").trim(),
+    provincia: normalizeProvincia((item.provincia || "").trim()),
     salarioHora,
     salarioMax, // null quando não há faixa — só um valor único
     turno: (item.turno || "").trim(),

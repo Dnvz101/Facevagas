@@ -6,10 +6,15 @@
 import { useMemo } from "react";
 import { Heart } from "lucide-react";
 import { NIHONGO_LEVELS } from "../config/constants.js";
+import { isSingleKnownProvince } from "../utils/jobParsing.js";
 
 export default function FilterBar({ jobs, filters, setFilters }) {
+  // Só mostra no dropdown as províncias que a gente reconhece de
+  // verdade (lista oficial) — isso esconde lixo de dado tipo "Santa
+  // Fe" ou duplicata de formatação ("AICHI KEN" vs "Aichi") sem
+  // apagar a vaga em si, ela continua aparecendo normal em "Todas".
   const provinciaOptions = useMemo(
-    () => [...new Set(jobs.map((j) => j.provincia).filter(Boolean))].sort(),
+    () => [...new Set(jobs.map((j) => j.provincia).filter(Boolean))].filter(isSingleKnownProvince).sort(),
     [jobs]
   );
 

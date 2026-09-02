@@ -61,7 +61,7 @@ import {
 } from "./lib/supabase.js";
 import { personalStorageGet, personalStorageSet } from "./lib/personalStorage.js";
 
-import { uid, simplifyNihongo } from "./utils/jobParsing.js";
+import { uid, simplifyNihongo, normalizeProvincia } from "./utils/jobParsing.js";
 import { toWhatsAppLink } from "./utils/format.js";
 import { bumpDailyStat, generateAppIcon } from "./utils/misc.js";
 import { isDestaqueCicloConcluido, isNovoCicloConcluido, isJobStale } from "./utils/badgeCycles.js";
@@ -932,6 +932,44 @@ export default function App() {
     if (dbStatus === "connected") deleteJobFromDB(id).catch((err) => console.error("Falha ao excluir:", err));
   };
 
+  // Exclusão em massa — mesma lógica do handleDelete, só que pra
+  // várias vagas de uma vez (usado pela seleção múltipla em "Todas as
+  // Vagas" no Admin, que agora tem checkbox por linha).
+  const handleDeleteMany = (ids) => {
+    const idSet = new Set(ids);
+    setJobs((prev) => prev.filter((j) => !idSet.has(j.id)));
+    if (dbStatus === "connected") {
+      ids.forEach((id) => deleteJobFromDB(id).catch((err) => console.error("Falha ao excluir:", err)));
+    }
+  };
+
+  // Corrige o "provincia" de todas as vagas JÁ SALVAS que vieram do
+  // scraper com formatação inconsistente (ex: "AICHI KEN" → "Aichi").
+  // A normalização em mapScrapedJob só pega importações NOVAS — isso
+  // aqui limpa o que já está no banco, de uma vez.
+  const handleNormalizeProvincias = () => {
+    const patches = {};
+    jobs.forEach((j) => {
+      const normalized = normalizeProvincia(j.provincia);
+      if (normalized !== j.provincia) patches[j.id] = normalized;
+    });
+    const total = Object.keys(patches).length;
+    if (total === 0) {
+      window.alert("Nenhuma vaga precisava de correção — todas as províncias já estão no formato certo.");
+      return;
+    }
+    const ok = window.confirm(`${total} vaga(s) serão corrigidas (ex: "AICHI KEN" → "Aichi"). Continuar?`);
+    if (!ok) return;
+
+    setJobs((prev) => prev.map((j) => (patches[j.id] ? { ...j, provincia: patches[j.id] } : j)));
+    if (dbStatus === "connected") {
+      Object.entries(patches).forEach(([id, provincia]) => {
+        updateJobInDB(id, { provincia }).catch((err) => console.error("Falha ao normalizar província:", err));
+      });
+    }
+    window.alert(`${total} vaga(s) corrigidas. Vagas com texto não reconhecido (ex: "Santa Fe") não foram alteradas — use o filtro de busca na tabela pra achar e revisar essas manualmente.`);
+  };
+
   // Reivindicação de vagas — agora SEM formulário: a empresa já está
   // logada (empresa/telefone já conhecidos), então só aplica "empresa" +
   // telefone/whatsapp em lote nas vagas selecionadas. Local primeiro,
@@ -1428,13 +1466,28 @@ export default function App() {
                   </button>
                 </div>
 
+                <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4">
+                  <p className="nv-display flex items-center gap-1.5 text-[13px] font-bold text-blue-800">
+                    🧹 Corrigir Províncias
+                  </p>
+                  <p className="nv-body mt-1 text-[11.5px] leading-relaxed text-blue-700">
+                    O scraper às vezes manda a província com formatação diferente (ex: "AICHI KEN" em vez de "Aichi"), duplicando opção no filtro. Isso corrige todas as vagas já salvas de uma vez.
+                  </p>
+                  <button
+                    onClick={handleNormalizeProvincias}
+                    className="nv-body mt-3 rounded-lg bg-blue-600 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-blue-700"
+                  >
+                    Corrigir formatação de todas as vagas
+                  </button>
+                </div>
+
                 {/* canUseBadge aqui é sempre "true" de propósito —
                     "Todas as Vagas" é a ferramenta de gerenciamento
                     geral do Super Admin, não deve respeitar cota de
                     plano nenhuma (diferente do Publicador Mágico do
                     Admin, que simula de propósito a experiência de
                     uma empresa naquele plano). */}
-                <JobsTable jobs={jobs} onToggleBadge={handleToggleBadge} onDelete={handleDelete} canUseBadge={() => true} showNovoBadge onTogglePreenchida={handleTogglePreenchida} onToggleArquivada={handleToggleArquivada} />
+                <JobsTable jobs={jobs} onToggleBadge={handleToggleBadge} onDelete={handleDelete} onDeleteMany={handleDeleteMany} canUseBadge={() => true} showNovoBadge onTogglePreenchida={handleTogglePreenchida} onToggleArquivada={handleToggleArquivada} />
               </div>
             )}
 

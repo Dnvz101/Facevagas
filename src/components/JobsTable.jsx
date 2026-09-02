@@ -1,6 +1,7 @@
 // ---------------------------------------------------------------
 // JobsTable — tabela de gerenciamento de vagas (Admin e Área do
-// Cliente), com toggle de selos respeitando cota do plano.
+// Cliente), com toggle de selos respeitando cota do plano, busca por
+// texto e seleção múltipla + exclusão em massa (via onDeleteMany).
 // ---------------------------------------------------------------
 
 import { useState } from "react";
@@ -10,10 +11,12 @@ import { BADGE_DEFS, ADMIN_ONLY_BADGE_DEFS } from "../config/badgeDefs.js";
 import { QUOTA_BADGE_MAP } from "../hooks/usePermissions.js";
 import { destaqueDiasRestantes, novoHorasRestantes, STALE_THRESHOLD_MS } from "../utils/badgeCycles.js";
 
-export default function JobsTable({ jobs, onToggleBadge, onDelete, canUseBadge, canToggleVerificado = true, quotaSummary = null, showNovoBadge = false, onTogglePreenchida, onToggleArquivada }) {
+export default function JobsTable({ jobs, onToggleBadge, onDelete, onDeleteMany, canUseBadge, canToggleVerificado = true, quotaSummary = null, showNovoBadge = false, onTogglePreenchida, onToggleArquivada }) {
   // Aviso visível (não é só um tooltip) quando alguém tenta ativar um
   // selo sem cota disponível — some sozinho depois de alguns segundos.
   const [quotaWarning, setQuotaWarning] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const handleBadgeClick = (job, key, label) => {
     const turningOn = !job[key];
@@ -26,13 +29,58 @@ export default function JobsTable({ jobs, onToggleBadge, onDelete, canUseBadge, 
     onToggleBadge(job.id, key);
   };
 
+  // Busca simples por texto — cargo, empresa ou província, sem
+  // diferenciar maiúscula/minúscula. É o que deixa achar rápido tanto
+  // "aquela vaga da Toyota" quanto "todas as vagas com província
+  // errada tipo Santa Fe", pra revisar manualmente.
+  const term = searchTerm.trim().toLowerCase();
+  const visibleJobs = term
+    ? jobs.filter((j) => `${j.cargo} ${j.empresa} ${j.provincia}`.toLowerCase().includes(term))
+    : jobs;
+
+  const allVisibleSelected = visibleJobs.length > 0 && visibleJobs.every((j) => selectedIds.has(j.id));
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      if (allVisibleSelected) {
+        const next = new Set(prev);
+        visibleJobs.forEach((j) => next.delete(j.id));
+        return next;
+      }
+      const next = new Set(prev);
+      visibleJobs.forEach((j) => next.add(j.id));
+      return next;
+    });
+  };
+  const toggleSelectOne = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const handleDeleteSelected = () => {
+    const count = selectedIds.size;
+    if (count === 0) return;
+    const ok = window.confirm(`Excluir ${count} vaga(s) selecionada(s)? Essa ação não tem volta.`);
+    if (!ok) return;
+    if (onDeleteMany) {
+      onDeleteMany([...selectedIds]);
+    } else {
+      selectedIds.forEach((id) => onDelete(id));
+    }
+    setSelectedIds(new Set());
+  };
+
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="nv-display text-[15px] font-bold text-slate-900">Vagas cadastradas</h3>
-            <p className="nv-body text-[12px] text-slate-500">{jobs.length} vagas · cliques totais: {jobs.reduce((s, j) => s + j.clicks, 0)}</p>
+            <p className="nv-body text-[12px] text-slate-500">
+              {visibleJobs.length !== jobs.length ? `${visibleJobs.length} de ${jobs.length} vagas` : `${jobs.length} vagas`} · cliques totais: {jobs.reduce((s, j) => s + j.clicks, 0)}
+            </p>
           </div>
           {quotaSummary && (
             <div className="flex flex-wrap items-center gap-1.5">
@@ -53,11 +101,31 @@ export default function JobsTable({ jobs, onToggleBadge, onDelete, canUseBadge, 
             <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" /> {quotaWarning}
           </p>
         )}
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar por cargo, empresa ou província..."
+            className="nv-body min-w-[200px] flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-[12px] text-slate-700 outline-none focus:border-blue-400"
+          />
+          {selectedIds.size > 0 && (
+            <button
+              onClick={handleDeleteSelected}
+              className="nv-body flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-rose-700"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Excluir {selectedIds.size} selecionada(s)
+            </button>
+          )}
+        </div>
       </div>
       <div className="max-h-[520px] overflow-y-auto">
         <table className="w-full text-left text-[12px]">
           <thead className="sticky top-0 bg-slate-50 text-slate-500">
             <tr>
+              <th className="px-4 py-2.5">
+                <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} className="h-3.5 w-3.5" />
+              </th>
               <th className="nv-body px-4 py-2.5 font-semibold">Vaga</th>
               <th className="nv-body px-4 py-2.5 font-semibold">Cliques</th>
               <th className="nv-body px-4 py-2.5 font-semibold">Selos</th>
@@ -65,8 +133,15 @@ export default function JobsTable({ jobs, onToggleBadge, onDelete, canUseBadge, 
             </tr>
           </thead>
           <tbody>
-            {jobs.map((j) => (
-              <tr key={j.id} className="border-t border-slate-100">
+            {visibleJobs.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="nv-body px-4 py-8 text-center text-slate-400">Nenhuma vaga encontrada com esse termo de busca.</td>
+              </tr>
+            ) : visibleJobs.map((j) => (
+              <tr key={j.id} className={`border-t border-slate-100 ${selectedIds.has(j.id) ? "bg-blue-50/50" : ""}`}>
+                <td className="px-4 py-3">
+                  <input type="checkbox" checked={selectedIds.has(j.id)} onChange={() => toggleSelectOne(j.id)} className="h-3.5 w-3.5" />
+                </td>
                 <td className="px-4 py-3">
                   <p className="nv-body flex items-center gap-1 font-semibold text-slate-800">
                     {j.cargo}
@@ -180,10 +255,3 @@ export default function JobsTable({ jobs, onToggleBadge, onDelete, canUseBadge, 
     </div>
   );
 }
-
-/* ---------------------------------------------------------------
-   Admin: Planos & Créditos
-   - Editor de preços/cotas por plano (salvo via activeAdapter).
-   - Seletor de teste (mock) pra simular a troca de plano da conta
-     atual e ver o usePermissions reagir em tempo real.
---------------------------------------------------------------- */
