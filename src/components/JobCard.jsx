@@ -6,7 +6,7 @@
 // ---------------------------------------------------------------
 
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
-import { Heart, Clock, Languages, MapPin, Info, Share2, CheckCircle2, Home, Users, Car } from "lucide-react";
+import { Heart, Clock, Languages, MapPin, Info, Share2, CheckCircle2, Home, Users, Car, Calendar } from "lucide-react";
 import { TopBadge, VerificadoBadge, TopSalarioBadge, UrgenteBadge, RecomendadoBadge, NovoBadge, WhatsAppIcon } from "./Badges.jsx";
 import { toWhatsAppLink } from "../utils/format.js";
 import { formatYen } from "../utils/format.js";
@@ -276,6 +276,11 @@ export default function JobCard({ job, isFlipped, onToggleFlip, onContact, onVie
             <span className="flex items-center gap-1"><Home className="h-3 w-3 text-blue-500" /> Moradia: {job.moradia}</span>
             <span className="flex items-center gap-1"><Users className="h-3 w-3 text-blue-500" /> H: {job.vagaHomens ? "Sim" : "Não"} · M: {job.vagaMulheres ? "Sim" : "Não"}</span>
             <span className="flex items-center gap-1"><Car className="h-3 w-3 text-blue-500" /> Condução: {job.conducao}</span>
+            {job.idadeMaxima != null && (
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3 w-3 text-blue-500" /> Idade: {job.idadeMaxima >= 999 ? "Sem limite" : `Até ${job.idadeMaxima} anos`}
+              </span>
+            )}
           </div>
 
           <p className="mt-2 text-center text-[10px] font-medium text-slate-400">Toque no card para voltar</p>
