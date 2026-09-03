@@ -320,6 +320,11 @@ export function mapScrapedJob(item) {
     isUrgente: false,
     isFixado: false,
     seloVerificado: false,
+    // 999 = anúncio diz explicitamente "sem limite de idade" | número =
+    // limite específico mencionado (ex: até 55) | null = não menciona
+    // nada sobre idade (nunca vira "sem limite" por omissão — ver
+    // extrair_idade_maxima no scraper).
+    idadeMaxima: item.idade_maxima != null ? Number(item.idade_maxima) : null,
   };
 }
 

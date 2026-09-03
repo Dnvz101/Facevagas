@@ -54,6 +54,7 @@ create table if not exists public.vagas (
   url_original text,                                -- link direto do anúncio na fonte de origem (scraper) — base da deduplicação, evita vaga repetida a cada scrape
   last_seen_at timestamptz,                        -- última vez que o scraper viu essa vaga — null = nunca veio do scraper (publicada por empresa, intocável pro arquivamento automático)
   arquivada boolean not null default false,        -- vaga que o scraper parou de ver há muito tempo — some da lista pública, mas o dado não é apagado (reversível)
+  idade_maxima integer,                             -- 999 = anúncio diz "sem limite de idade" | número = limite mencionado (ex: até 55) | null = não menciona nada sobre idade (nunca "sem limite" por omissão)
   created_at timestamptz not null default now()
 );
 
@@ -81,6 +82,7 @@ alter table public.vagas add column if not exists daily_stats jsonb not null def
 alter table public.vagas add column if not exists url_original text;
 alter table public.vagas add column if not exists last_seen_at timestamptz;
 alter table public.vagas add column if not exists arquivada boolean not null default false;
+alter table public.vagas add column if not exists idade_maxima integer;
 
 -- Índice pra tornar a busca por url_original (usada em TODA importação
 -- do scraper, pra achar duplicata) rápida mesmo com o banco crescendo.

@@ -71,6 +71,7 @@ export function rowToJob(row) {
     urlOriginal: row.url_original || null,
     lastSeenAt: row.last_seen_at ? new Date(row.last_seen_at).getTime() : null,
     arquivada: !!row.arquivada,
+    idadeMaxima: row.idade_maxima ?? null,
   };
   for (const [jsKey, dbKey] of Object.entries(BADGE_DB_FIELDS)) job[jsKey] = !!row[dbKey];
   return job;
@@ -107,6 +108,7 @@ export function jobToRow(job) {
     url_original: job.urlOriginal || null,
     last_seen_at: job.lastSeenAt ? new Date(job.lastSeenAt).toISOString() : null,
     arquivada: !!job.arquivada,
+    idade_maxima: job.idadeMaxima ?? null,
   };
   for (const [jsKey, dbKey] of Object.entries(BADGE_DB_FIELDS)) row[dbKey] = !!job[jsKey];
   return row;
