@@ -228,3 +228,23 @@ cadastro de Empreiteira E Prestador (com prévia ao vivo).
   PlanComparisonCards/AlertBanner (confirmado só um `?text=` na URL
   final). Build limpo.
 
+## 🔠 v2.5.6 — Fonte maior nos cards da lista (público 55+)
+- [x] A pedido: como o público da campanha é gente mais velha, aumentei
+      as fontes do `IndicacaoCard.jsx` o máximo que deu sem estourar o
+      layout — tag de origem, empresa, cargo (14.5px→18px), local/idade,
+      preço (13px→17px) e o botão de WhatsApp (11px→14px, ícone maior).
+      Cabeçalho "Vagas indicadas"/contador e a nota de rodapé também
+      cresceram um pouco, pra ficar consistente com o resto da leitura.
+- [x] Rede de segurança: a linha preço+botão ganhou `flex-wrap` — em
+      telas bem estreitas (≤360px) com preço em faixa ("¥1.200 ~
+      ¥1.350/h") + fonte maior, o botão quebra pra linha de baixo em
+      vez de estourar a lateral do card. Contas de largura na mão
+      confirmam que em 360px o par preço+botão passa da largura
+      disponível (~288px após padding), então o wrap realmente entra
+      em ação nesse caso — comportamento esperado, não bug.
+- ⚠️ Não consegui tirar print de verdade pra conferir visualmente
+  (Playwright sem navegador disponível neste ambiente) — validei com
+  render real via `react-dom/server` dos dois cards exatos do print
+  que você mandou (Tobishima/Josi e Inuyama/Daikei) + build limpo.
+  Vale um olhar seu no celular de verdade depois de subir.
+

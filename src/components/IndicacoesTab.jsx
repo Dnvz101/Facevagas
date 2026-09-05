@@ -112,8 +112,8 @@ export default function IndicacoesTab({ config, jobs, onContact }) {
 
         {/* Lista */}
         <div ref={listRef} className="mb-3 flex items-baseline justify-between">
-          <h2 className="nv-display text-[15px] font-bold text-white">Vagas indicadas</h2>
-          <span className="nv-body text-[11.5px] text-white/60">
+          <h2 className="nv-display text-[17px] font-bold text-white">Vagas indicadas</h2>
+          <span className="nv-body text-[13px] text-white/60">
             {jobs.length} confirmada{jobs.length === 1 ? "" : "s"}
           </span>
         </div>
@@ -130,7 +130,7 @@ export default function IndicacoesTab({ config, jobs, onContact }) {
           </div>
         )}
 
-        <p className="nv-body pb-1 pt-4 text-center text-[10.5px] leading-relaxed text-white/40">
+        <p className="nv-body pb-1 pt-4 text-center text-[12px] leading-relaxed text-white/40">
           Só entram aqui vagas que mencionam idade explicitamente no anúncio (limite alto ou sem limite) — nunca por ausência de menção.
         </p>
       </div>
