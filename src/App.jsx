@@ -14,7 +14,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import {
   Sun, Moon, LogIn, Calculator, LogOut, X, Bell, MessageCircle,
-  Briefcase, TrendingUp, Users, Building2,
+  Briefcase, TrendingUp, Users, Building2, HeartHandshake,
 } from "lucide-react";
 
 import BannerCard, { BannerEditor } from "./components/BannerCard.jsx";
@@ -33,6 +33,8 @@ import JobsTable from "./components/JobsTable.jsx";
 import StatsDashboard from "./components/StatsDashboard.jsx";
 import CommunityAdminPanel from "./components/CommunityAdminPanel.jsx";
 import ServiceCategoryManager, { ServiceListingsAdminPanel } from "./components/ServiceCategoryManager.jsx";
+import IndicacoesTab from "./components/IndicacoesTab.jsx";
+import IndicacoesAdminPanel from "./components/IndicacoesAdminPanel.jsx";
 import ProviderDashboard from "./components/ProviderDashboard.jsx";
 import ClientDashboard from "./components/ClientDashboard.jsx";
 import PartnerAuthModal from "./components/PartnerAuthModal.jsx";
@@ -58,17 +60,18 @@ import {
   fetchServiceListingsFromDB, insertServiceListingToDB, updateServiceListingInDB, deleteServiceListingFromDB,
   fetchPlanosFromDB, upsertPlanosInDB,
   fetchPartnersFromDB, upsertPartnersInDB, deletePartnerFromDB,
+  fetchIndicacoesConfigFromDB, upsertIndicacoesConfigInDB,
 } from "./lib/supabase.js";
 import { personalStorageGet, personalStorageSet } from "./lib/personalStorage.js";
 
-import { uid, simplifyNihongo, normalizeProvincia } from "./utils/jobParsing.js";
+import { uid, simplifyNihongo, normalizeProvincia, isIndicacaoElegivel } from "./utils/jobParsing.js";
 import { toWhatsAppLink } from "./utils/format.js";
 import { bumpDailyStat, generateAppIcon } from "./utils/misc.js";
 import { isDestaqueCicloConcluido, isNovoCicloConcluido, isJobStale } from "./utils/badgeCycles.js";
 import { CATEGORY_COLOR_OPTIONS } from "./utils/categoryStyle.js";
 
 import { PLANOS_DEFAULT } from "./config/plans.js";
-import { ADMIN_TOOL_TITLES, FAVORITES_STORAGE_KEY, SERVICE_LIKES_STORAGE_KEY } from "./config/constants.js";
+import { ADMIN_TOOL_TITLES, FAVORITES_STORAGE_KEY, SERVICE_LIKES_STORAGE_KEY, INDICACOES_CONFIG_DEFAULT } from "./config/constants.js";
 import { initialJobs, initialRegisteredPartners, SERVICE_CATEGORIES_SEED, SERVICE_LISTINGS_SEED } from "./config/seedData.js";
 
 export default function App() {
@@ -266,6 +269,10 @@ export default function App() {
   const [alertSubscriptions, setAlertSubscriptions] = useState([]);
   const [alertModalOpen, setAlertModalOpen] = useState(false);
 
+  // Config da aba Indicações (55+) — texto do hero, regra de idade do
+  // cross-post e WhatsApp dedicado. Singleton igual a banner/comunidade_banner.
+  const [indicacoesConfig, setIndicacoesConfig] = useState(INDICACOES_CONFIG_DEFAULT);
+
   // Estatísticas de uso do site inteiro (Super Admin) — contadores
   // simples, sem cookies/rastreamento de pessoa. "SITE_STATS_DEFAULT"
   // define a forma inicial pra sempre ter um objeto completo, mesmo
@@ -453,7 +460,7 @@ export default function App() {
 
     (async () => {
       try {
-        const [dbJobs, dbBanner, dbAlertBanner, dbAlertSubs, dbPlanos, dbPartners, dbSiteStats, dbCommunity, dbServiceCategories, dbServiceListings, dbCommunityBanner] = await Promise.all([
+        const [dbJobs, dbBanner, dbAlertBanner, dbAlertSubs, dbPlanos, dbPartners, dbSiteStats, dbCommunity, dbServiceCategories, dbServiceListings, dbCommunityBanner, dbIndicacoesConfig] = await Promise.all([
           fetchJobsFromDB(),
           fetchBannerFromDB(),
           fetchAlertBannerFromDB(),
@@ -465,6 +472,7 @@ export default function App() {
           fetchServiceCategoriesFromDB(),
           fetchServiceListingsFromDB(),
           fetchCommunityBannerFromDB(),
+          fetchIndicacoesConfigFromDB(),
         ]);
         if (cancelled) return;
         if (dbJobs.length) setJobs(dbJobs);
@@ -478,6 +486,7 @@ export default function App() {
         if (dbServiceCategories?.length) setServiceCategories(dbServiceCategories);
         if (dbServiceListings?.length) setServiceListings(dbServiceListings);
         if (dbCommunityBanner) setCommunityBanner((b) => ({ ...b, ...dbCommunityBanner }));
+        if (dbIndicacoesConfig) setIndicacoesConfig((c) => ({ ...c, ...dbIndicacoesConfig }));
         setDbStatus("connected");
       } catch (err) {
         if (cancelled) return;
@@ -574,6 +583,48 @@ export default function App() {
   );
 
   const [filters, setFilters] = useState({ sexo: "todos", provincia: "todas", nihongo: "todos", favoritas: false });
+
+  // ---------------------------------------------------------------
+  // Aba Indicações (55+) — três listas derivadas do MESMO "jobs":
+  //  • indicacoesJobsElegiveis: feed público — indicações manuais +
+  //    vagas tradicionais que qualificam por idade, só as publicadas/
+  //    não arquivadas/não preenchidas, mais recentes primeiro.
+  //  • indicacoesManuaisJobs: TODAS as vagas com indicacao=true (Admin
+  //    precisa ver rascunho/preenchida/arquivada também, pra gerenciar).
+  //  • qualifyingTraditionalJobs: só informativo no Admin — vagas que
+  //    NÃO foram indicadas manualmente, mas entram sozinhas por idade.
+  // ---------------------------------------------------------------
+  const indicacoesJobsElegiveis = useMemo(
+    () =>
+      jobs
+        .filter((j) => j.status !== "rascunho" && !j.arquivada && !j.preenchida)
+        .filter((j) => isIndicacaoElegivel(j, indicacoesConfig.idadeMinima)),
+    // "jobs" já vem ordenado por created_at.desc direto da consulta ao
+    // Supabase (ver fetchJobs em lib/supabase.js) — sem campo createdAt
+    // mapeado no objeto job, então preserva essa ordem em vez de
+    // reordenar por um campo que não existe no objeto em memória.
+    [jobs, indicacoesConfig.idadeMinima]
+  );
+  const indicacoesManuaisJobs = useMemo(() => jobs.filter((j) => j.indicacao), [jobs]);
+  const qualifyingTraditionalJobs = useMemo(
+    () =>
+      jobs
+        .filter((j) => !j.indicacao && j.status !== "rascunho" && !j.arquivada && !j.preenchida)
+        .filter((j) => isIndicacaoElegivel(j, indicacoesConfig.idadeMinima)),
+    [jobs, indicacoesConfig.idadeMinima]
+  );
+
+  // Config da aba Indicações — mesmo padrão de handleBannerChange
+  // (salva local otimista + persiste no Supabase se conectado).
+  const handleIndicacoesConfigChange = (updater) => {
+    setIndicacoesConfig((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      if (dbStatus === "connected") {
+        upsertIndicacoesConfigInDB(next).catch((err) => console.error("Falha ao salvar config de Indicações:", err));
+      }
+      return next;
+    });
+  };
 
   // Rastreamento de filtros usados (Estatísticas do Admin) — só conta
   // quando um valor DIFERENTE do padrão é escolhido (evita contar toda
@@ -1213,6 +1264,7 @@ export default function App() {
     { key: "empreiteiras", label: "Rankings", icon: TrendingUp },
     { key: "calculadora", label: "Calculadora", icon: Calculator },
     { key: "comunidade", label: "Comunidade", icon: Users },
+    { key: "indicacoes", label: "Indicações", icon: HeartHandshake },
     ...(currentClientCompany ? [{ key: "minhaempresa", label: currentClientCompany.tipo === "prestador" ? "Meus Anúncios" : "Minha Empresa", icon: Building2 }] : []),
   ];
 
@@ -1282,16 +1334,16 @@ export default function App() {
         </div>
 
         <div className="mx-auto max-w-3xl px-5 pb-4">
-          <div className={`grid gap-1 rounded-2xl bg-slate-100 p-1 ${tabs.length === 5 ? "grid-cols-5" : tabs.length === 4 ? "grid-cols-4" : "grid-cols-3"}`}>
+          <div className={`grid gap-1 rounded-2xl bg-slate-100 p-1 ${tabs.length === 6 ? "grid-cols-6" : tabs.length === 5 ? "grid-cols-5" : tabs.length === 4 ? "grid-cols-4" : "grid-cols-3"}`}>
             {tabs.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`flex flex-col items-center gap-1 rounded-xl py-2 text-[11px] font-semibold transition-colors ${
+                className={`flex min-w-0 flex-col items-center gap-1 rounded-xl px-0.5 py-2 text-[10.5px] font-semibold leading-tight transition-colors ${
                   tab === key ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
                 }`}
               >
-                <Icon className="h-4 w-4" /> {label}
+                <Icon className="h-4 w-4 flex-shrink-0" /> <span className="truncate">{label}</span>
               </button>
             ))}
           </div>
@@ -1356,6 +1408,10 @@ export default function App() {
             onToggleLike={handleToggleServiceLike}
             onCadastrar={() => setPartnerAuthModalOpen(true)}
           />
+        )}
+
+        {tab === "indicacoes" && (
+          <IndicacoesTab config={indicacoesConfig} jobs={indicacoesJobsElegiveis} onContact={handleContact} />
         )}
 
         {tab === "admin" && (
@@ -1507,6 +1563,24 @@ export default function App() {
                   onDelete={handleDeleteServiceListing}
                 />
               </div>
+            )}
+
+            {adminTab === "indicacoes" && (
+              <IndicacoesAdminPanel
+                config={indicacoesConfig}
+                setConfig={handleIndicacoesConfigChange}
+                indicacoesJobs={indicacoesManuaisJobs}
+                qualifyingTraditionalJobs={qualifyingTraditionalJobs}
+                onPublish={handlePublish}
+                currentPlan={currentPlan}
+                planKey={planKey}
+                quotaUsage={quotaUsage}
+                onToggleBadge={handleToggleBadge}
+                onDelete={handleDelete}
+                onDeleteMany={handleDeleteMany}
+                onTogglePreenchida={handleTogglePreenchida}
+                onToggleArquivada={handleToggleArquivada}
+              />
             )}
           </div>
         )}

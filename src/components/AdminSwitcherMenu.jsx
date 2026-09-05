@@ -25,6 +25,7 @@ export default function AdminSwitcherMenu({ onManagePartners, onOpenAdminTool, o
     { key: "estatisticas", label: "Estatísticas de Uso", emoji: "📊" },
     { key: "comunidade", label: "Comunidade (Vídeos)", emoji: "🤝" },
     { key: "prestadores", label: "Prestadores de Serviço", emoji: "🛠️" },
+    { key: "indicacoes", label: "Indicações (55+)", emoji: "🤝" },
   ];
 
   const VIEW_AS_OPTIONS = [

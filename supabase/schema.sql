@@ -431,3 +431,39 @@ alter table public.admin_users enable row level security;
 -- update/delete), e só a service role (que ignora RLS) consegue
 -- mexer nessa tabela. É a tabela mais trancada do banco inteiro.
 
+-- =============================================================
+-- v22 — aba Indicações (campanha 55+). Duas peças novas:
+--  1. "indicacao" em vagas — marca uma vaga cadastrada MANUALMENTE
+--     pelo Admin a partir de uma indicação recebida (hoje por
+--     WhatsApp, colada no Publicador Mágico). Não é selo pago, é só
+--     origem — reaproveita toda a estrutura de "vagas" (status,
+--     selos, arquivamento etc.) em vez de criar tabela paralela.
+--  2. "indicacoes_config" — singleton (mesmo padrão de "banner") com
+--     o texto do hero da aba pública + o limite de idade que decide
+--     quais vagas TRADICIONAIS entram automaticamente no feed (cross-
+--     post) + o WhatsApp dedicado pra indicar (vazio = função ainda
+--     não configurada, botão fica escondido).
+-- =============================================================
+alter table public.vagas add column if not exists indicacao boolean not null default false;
+
+create table if not exists public.indicacoes_config (
+  id int primary key default 1,
+  eyebrow text not null default 'Uma campanha da comunidade',
+  titulo text not null default 'Depois dos 55, achar vaga não devia ser tão difícil',
+  subtitulo text not null default 'Vimos gente comentando isso num grupo do Facebook. Então criamos um jeito de quem já trabalha ajudar quem ainda está procurando — direto, sem burocracia.',
+  idade_minima integer not null default 55,   -- vagas tradicionais com idade_maxima >= isto (ou 999 = sem limite) entram sozinhas no feed
+  whatsapp_indicar text default '',            -- número dedicado pra "Indicar uma vaga pelo WhatsApp" — vazio = botão escondido
+  updated_at timestamptz not null default now(),
+  constraint indicacoes_config_singleton check (id = 1)
+);
+
+insert into public.indicacoes_config (id) values (1) on conflict (id) do nothing;
+
+alter table public.indicacoes_config enable row level security;
+
+drop policy if exists "indicacoes_config_public_read" on public.indicacoes_config;
+create policy "indicacoes_config_public_read" on public.indicacoes_config for select using (true);
+
+drop policy if exists "indicacoes_config_public_update" on public.indicacoes_config;
+create policy "indicacoes_config_public_update" on public.indicacoes_config for update using (true);
+

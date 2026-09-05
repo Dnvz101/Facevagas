@@ -21,6 +21,11 @@ export const emptyForm = {
   nihongo: "", moradia: "", vagaHomens: "Sim", vagaMulheres: "Sim", conducao: "",
   tags: "", telefone: "", whatsapp: "", descricao: "",
   isRecomendado: false, isUrgente: false, isFixado: false,
+  // Idade máxima — igual ao scraper: só preenche quando o anúncio/quem
+  // indicou mencionou idade de verdade. "semLimiteIdade" marcado vira
+  // 999 na publicação (ver handlePublish); vazio + desmarcado = null
+  // (nunca vira "sem limite" por omissão).
+  idadeMaxima: "", semLimiteIdade: false,
 };
 
 const EXTRACTION_PROMPT = `Você é um assistente de extração de dados para um portal de vagas de emprego no Japão.
@@ -277,10 +282,18 @@ export default function AIPublisher({ onPublish, currentPlan, planKey, canUseBad
     for (const key of Object.keys(QUOTA_BADGE_MAP)) {
       if (safeForm[key] && !canUseBadge(key)) safeForm[key] = false;
     }
+    // Mesma regra do scraper: "sem limite" só quando marcado explicitamente
+    // (999); número digitado vira o limite; campo vazio + desmarcado = null.
+    const idadeMaximaNum = form.semLimiteIdade
+      ? 999
+      : (form.idadeMaxima.trim() ? parseInt(form.idadeMaxima, 10) || null : null);
+    delete safeForm.idadeMaxima;
+    delete safeForm.semLimiteIdade;
     onPublish({
       ...safeForm,
       salarioHora: salarioHoraNum,
       salarioMax: salarioMaxNum,
+      idadeMaxima: idadeMaximaNum,
       vagaHomens: form.vagaHomens === "Sim",
       vagaMulheres: form.vagaMulheres === "Sim",
       descricao: clampDescription(form.descricao),
@@ -319,6 +332,7 @@ export default function AIPublisher({ onPublish, currentPlan, planKey, canUseBad
     telefone: form.telefone,
     whatsapp: form.whatsapp,
     descricao: form.descricao,
+    idadeMaxima: form.semLimiteIdade ? 999 : (form.idadeMaxima.trim() ? parseInt(form.idadeMaxima, 10) || null : null),
     clicks: 0,
     isRecomendado: form.isRecomendado,
     isUrgente: form.isUrgente,
@@ -455,6 +469,35 @@ export default function AIPublisher({ onPublish, currentPlan, planKey, canUseBad
           {field("Tags (vírgula)", "tags")}
           {field("Telefone", "telefone")}
           {field("WhatsApp", "whatsapp")}
+        </div>
+
+        {/* Idade máxima — mesma regra do scraper: só preenche quando o
+            anúncio/indicação menciona idade de verdade, nunca "sem
+            limite" por omissão. Alimenta o verso do JobCard e, quando
+            alta ou "sem limite", faz a vaga entrar sozinha na aba
+            Indicações (55+). */}
+        <div className="mt-3 flex items-end gap-3">
+          <div className="flex-1">
+            <label className="nv-body mb-1 block text-[11px] font-semibold text-blue-600">Idade máxima (se mencionada)</label>
+            <input
+              value={form.idadeMaxima}
+              disabled={form.semLimiteIdade}
+              placeholder="Ex: 55"
+              onChange={(e) => setForm((f) => ({ ...f, idadeMaxima: e.target.value.replace(/\D/g, "") }))}
+              className={`nv-body w-full rounded-lg border px-3 py-2 text-[13px] outline-none focus:border-blue-400 ${
+                form.semLimiteIdade ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400" : "border-slate-200 text-slate-800"
+              }`}
+            />
+          </div>
+          <label className="mb-2 flex flex-shrink-0 items-center gap-1.5 text-[12px] font-medium text-slate-600">
+            <input
+              type="checkbox"
+              checked={form.semLimiteIdade}
+              onChange={(e) => setForm((f) => ({ ...f, semLimiteIdade: e.target.checked, idadeMaxima: e.target.checked ? "" : f.idadeMaxima }))}
+              className="h-4 w-4 flex-shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-400"
+            />
+            Sem limite de idade
+          </label>
         </div>
 
         <div className="mt-3">

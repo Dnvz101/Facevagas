@@ -72,6 +72,7 @@ export function rowToJob(row) {
     lastSeenAt: row.last_seen_at ? new Date(row.last_seen_at).getTime() : null,
     arquivada: !!row.arquivada,
     idadeMaxima: row.idade_maxima ?? null,
+    indicacao: !!row.indicacao, // origem: cadastrada manualmente via aba Indicações (55+)
   };
   for (const [jsKey, dbKey] of Object.entries(BADGE_DB_FIELDS)) job[jsKey] = !!row[dbKey];
   return job;
@@ -109,6 +110,7 @@ export function jobToRow(job) {
     last_seen_at: job.lastSeenAt ? new Date(job.lastSeenAt).toISOString() : null,
     arquivada: !!job.arquivada,
     idade_maxima: job.idadeMaxima ?? null,
+    indicacao: !!job.indicacao,
   };
   for (const [jsKey, dbKey] of Object.entries(BADGE_DB_FIELDS)) row[dbKey] = !!job[jsKey];
   return row;
@@ -161,6 +163,7 @@ export const supabaseAdapter = {
     if ("urlOriginal" in patch) dbPatch.url_original = patch.urlOriginal || null;
     if ("lastSeenAt" in patch) dbPatch.last_seen_at = patch.lastSeenAt ? new Date(patch.lastSeenAt).toISOString() : null;
     if ("arquivada" in patch) dbPatch.arquivada = !!patch.arquivada;
+    if ("indicacao" in patch) dbPatch.indicacao = !!patch.indicacao;
     for (const [jsKey, dbKey] of Object.entries(BADGE_DB_FIELDS)) {
       if (jsKey in patch) dbPatch[dbKey] = patch[jsKey];
     }
@@ -392,6 +395,33 @@ export const supabaseAdapter = {
   async deletePartner(id) {
     await supabaseRequest(`parceiros?id=eq.${id}`, { method: "DELETE", prefer: "return=minimal" });
   },
+  // Usa a tabela `indicacoes_config` (singleton igual à `banner`) do
+  // supabase-schema.sql (v22) — texto do hero + regra de idade da aba Indicações.
+  async fetchIndicacoesConfig() {
+    const rows = await supabaseRequest("indicacoes_config?select=*&id=eq.1");
+    if (!rows?.[0]) return null;
+    const r = rows[0];
+    return {
+      eyebrow: r.eyebrow || "",
+      titulo: r.titulo || "",
+      subtitulo: r.subtitulo || "",
+      idadeMinima: r.idade_minima ?? 55,
+      whatsappIndicar: r.whatsapp_indicar || "",
+    };
+  },
+  async upsertIndicacoesConfig(config) {
+    await supabaseRequest("indicacoes_config?id=eq.1", {
+      method: "PATCH",
+      body: JSON.stringify({
+        eyebrow: config.eyebrow,
+        titulo: config.titulo,
+        subtitulo: config.subtitulo,
+        idade_minima: config.idadeMinima,
+        whatsapp_indicar: config.whatsappIndicar,
+      }),
+      prefer: "return=minimal",
+    });
+  },
 };
 
 
@@ -430,3 +460,5 @@ export async function upsertPlanosInDB(planos) { return supabaseAdapter.upsertPl
 export async function fetchPartnersFromDB() { return supabaseAdapter.fetchPartners(); }
 export async function upsertPartnersInDB(partners) { return supabaseAdapter.upsertPartners(partners); }
 export async function deletePartnerFromDB(id) { return supabaseAdapter.deletePartner(id); }
+export async function fetchIndicacoesConfigFromDB() { return supabaseAdapter.fetchIndicacoesConfig(); }
+export async function upsertIndicacoesConfigInDB(config) { return supabaseAdapter.upsertIndicacoesConfig(config); }

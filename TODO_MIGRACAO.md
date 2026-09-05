@@ -72,3 +72,36 @@ e achei + corrigi:
 Testado com clique de verdade em: todas as abas, virar card de vaga,
 abrir ranking, adicionar perfil no Kakeibo, abas Orçamento/Compras,
 cadastro de Empreiteira E Prestador (com prévia ao vivo).
+
+## 🤝 v2.5.0 — Aba Indicações (campanha 55+)
+- [x] Nova aba pública "Indicações" — hero (editável), split cards,
+      "Como funciona", CTA de WhatsApp (escondido até configurar
+      número dedicado) e feed unificado.
+- [x] Feed unificado: indicações cadastradas manualmente pelo Admin +
+      vagas TRADICIONAIS que já mencionam idade alta/sem limite no
+      anúncio (`idade_maxima`) — nunca por ausência de menção.
+- [x] `vagas.indicacao` (boolean) — nova coluna, marca origem
+      "campanha de indicação" sem duplicar estrutura de dados.
+- [x] `indicacoes_config` (singleton) — texto do hero, idade mínima do
+      cross-post e WhatsApp de indicação, tudo editável no Admin.
+- [x] Painel "Indicações (55+)" no menu do Super Admin: editor do
+      banner, publicação manual (reaproveita o Publicador Mágico já
+      existente, só prefixando `indicacao:true`), lista das indicações
+      publicadas e lista informativa das vagas tradicionais que
+      qualificam por idade.
+- [x] Campo "Idade máxima" (+ toggle "Sem limite") adicionado ao
+      formulário manual do Publicador Mágico — antes só o scraper
+      preenchia esse dado.
+- ⚠️ Playwright não conseguiu rodar neste ambiente (download do
+      Chromium bloqueado pela allowlist de rede do sandbox) — validado
+      com `npm run build` limpo + testes de render real via
+      `react-dom/server` com dados mockados (IndicacaoCard,
+      IndicacoesTab, IndicacoesAdminPanel com AIPublisher/JobCard
+      aninhados) + checagem manual de cada import novo. Recomendo um
+      clique real no navegador depois de subir, já que isso não
+      substitui 100% o teste no Chrome de verdade.
+- 🔜 Pendente (combinado pra depois): WhatsApp dedicado de verdade pra
+      "Indicar uma vaga" (hoje o botão só aparece se o Admin configurar
+      um número em `indicacoes_config.whatsapp_indicar`; sem número,
+      fica escondido com uma mensagem "em breve").
+

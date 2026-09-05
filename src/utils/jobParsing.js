@@ -50,6 +50,30 @@ export function simplifyNihongo(nihongo) {
   return clean ? (clean.length > 14 ? clean.slice(0, 14).trim() + "…" : clean) : "—";
 }
 
+// ---------------------------------------------------------------
+// Aba Indicações (campanha 55+) — regra de elegibilidade do feed
+// unificado: entra sozinha (cross-post) qualquer vaga TRADICIONAL cujo
+// anúncio original mencionou idade (idadeMaxima != null) E aceita pelo
+// menos até "idadeMinima" (ou "sem limite" = 999) — nunca por ausência
+// de menção. Vagas marcadas manualmente como indicação (job.indicacao)
+// sempre entram, independente do número de idade.
+// ---------------------------------------------------------------
+export function isIndicacaoElegivel(job, idadeMinima = 55) {
+  if (!job) return false;
+  if (job.indicacao) return true;
+  if (job.idadeMaxima == null) return false;
+  if (job.idadeMaxima >= 999) return true;
+  return job.idadeMaxima >= idadeMinima;
+}
+
+// Texto amigável do limite de idade pro card da aba Indicações — sempre
+// no sentido real do campo (idade MÁXIMA aceita), pra não criar
+// ambiguidade tipo "aceita acima de X" (que não é o que o dado guarda).
+export function idadeIndicacaoLabel(idadeMaxima) {
+  if (idadeMaxima == null) return null;
+  return idadeMaxima >= 999 ? "Sem limite de idade" : `Aceita até ${idadeMaxima} anos`;
+}
+
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
 export const DESCRIPTION_MAX_CHARS = 220;
