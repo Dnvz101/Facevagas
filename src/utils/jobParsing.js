@@ -267,13 +267,14 @@ export function reconcileSalary(candidateRaw, sourceText) {
 // IA seguir a mesma régua. Regra igual à do scraper: só retorna algo
 // quando o texto MENCIONA idade de verdade — nunca por ausência.
 //
-// "até/no máximo N anos" -> N (é um teto de verdade)
-// "sem limite/restrição de idade", "qualquer idade" -> 999
-// "acima de / mais de / a partir de N anos", "~N anos" -> 999 — esses
-// padrões sinalizam abertura pra quem tem MAIS que N (não um teto),
-// então tratamos como "sem limite" pro propósito da campanha 55+: o
-// que importa aqui é "esse anúncio deixa claro que aceita gente mais
-// velha", não o número exato.
+// "até/no máximo N anos" -> N
+// "acima de / mais de / a partir de N anos", "~N anos", "N anos ou
+// mais" -> N também (número literal, mesmo sem ser um teto rígido —
+// decisão explícita: perder o número real pra virar "sem limite"
+// automaticamente esconderia informação útil pra ajustar a idade
+// mínima do cross-post depois).
+// "sem limite/restrição de idade", "qualquer idade" -> 999 (aqui sim
+// o anúncio não dá NENHUM número, só diz que aceita geral).
 // ---------------------------------------------------------------
 export function extractIdadeMaxima(rawText) {
   const text = (rawText || "");
@@ -284,10 +285,13 @@ export function extractIdadeMaxima(rawText) {
   if (m) return parseInt(m[1], 10);
   m = text.match(/(?:no\s+m[aá]ximo|m[aá]ximo\s+de)\s+(\d{2})\s*anos/i);
   if (m) return parseInt(m[1], 10);
+  m = text.match(/(?:acima\s+de|mais\s+de|a\s+partir\s+de)\s+(\d{2})\s*anos/i);
+  if (m) return parseInt(m[1], 10);
+  m = text.match(/~\s*(\d{2})\s*anos/i);
+  if (m) return parseInt(m[1], 10);
+  m = text.match(/(\d{2})\s*anos\s+ou\s+mais/i);
+  if (m) return parseInt(m[1], 10);
 
-  if (/(?:acima\s+de|mais\s+de|a\s+partir\s+de)\s+\d{2}\s*anos|~\s*\d{2}\s*anos|\d{2}\s*anos\s+ou\s+mais/i.test(text)) {
-    return 999;
-  }
   return null;
 }
 

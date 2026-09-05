@@ -45,8 +45,8 @@ Formato exato esperado:
 "descricao" deve ser um RESUMO CURTO e fiel, em português, do texto do anúncio (funções, requisitos e condições principais).
 Regra de tamanho obrigatória: no MÁXIMO 220 caracteres (aproximadamente 2 a 3 frases curtas). Priorize as informações mais importantes e corte o resto — não ultrapasse o limite, e não adicione nada que não esteja no conteúdo original.
 "idadeMaxima" — SÓ preencha quando o anúncio mencionar idade explicitamente (nunca deduza pela ausência de menção):
-  - Se o anúncio disser um limite claro tipo "até 55 anos" ou "no máximo 50 anos", retorne APENAS o número (ex: "55").
-  - Se o anúncio disser que aceita a partir de/acima de/mais de uma certa idade, usar "~NN anos", ou disser explicitamente "sem limite de idade" / "qualquer idade" — todos esses casos sinalizam que aceita gente mais velha SEM teto, então retorne a string exata "sem limite".
+  - Se o anúncio disser um número de idade de qualquer jeito ("até 55 anos", "no máximo 50", "acima de 60 anos", "a partir de 50 anos", "~60 anos", "60 anos ou mais"), retorne APENAS esse número (ex: "55"), mesmo quando não for um teto rígido.
+  - Se o anúncio disser "sem limite de idade", "sem restrição de idade" ou "qualquer idade" (sem dar nenhum número), retorne a string exata "sem limite".
   - Se o anúncio não mencionar idade de jeito nenhum, retorne "".`;
 
 export default function AIPublisher({ onPublish, currentPlan, planKey, canUseBadge, quotaUsage, prefill = {}, lockedFields = [], autoNovo = false }) {

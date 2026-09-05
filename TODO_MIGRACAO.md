@@ -182,3 +182,20 @@ cadastro de Empreiteira E Prestador (com prévia ao vivo).
   6 bateram certo. Testei também a lógica de merge IA+fallback
   isoladamente (5 cenários, todos corretos). Build limpo.
 
+## 🔧 v2.5.4 — Ajuste de critério: "~N anos" agora captura o número, não "sem limite"
+- [x] Testando com uma vaga real ("Homens ~60 anos"), a v2.5.3 marcou
+      "Sem limite de idade" em vez de capturar "60" — era uma decisão
+      minha (tratar "~N anos"/"acima de N" como sem-teto) que na
+      prática esconde um número real que seria útil pra afinar a idade
+      mínima do cross-post depois. Perguntei e o usuário confirmou:
+      quer o número literal.
+- [x] Regra nova em `extractIdadeMaxima` (jobParsing.js) e no
+      `EXTRACTION_PROMPT` (AIPublisher.jsx): "até/no máximo/acima
+      de/mais de/a partir de/~N anos/N anos ou mais" → sempre captura
+      o número N. Só "sem limite de idade", "sem restrição de idade" e
+      "qualquer idade" (quando o anúncio NÃO dá nenhum número) viram
+      999.
+- Testado com 8 casos incluindo o anúncio real da Tobishima ("~60
+  anos" → 60) e o "até 53 anos" do v2.5.3 (continua 53) — todos
+  corretos. Build limpo.
+
