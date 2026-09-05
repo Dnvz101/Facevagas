@@ -128,3 +128,32 @@ cadastro de Empreiteira E Prestador (com prévia ao vivo).
   certo em cada caso, e o painel renderiza os botões certos conforme
   o estado de cada vaga.
 
+## 🎨 v2.5.2 — Herói da aba Indicações virou imagem (fundo azul full-bleed)
+- [x] Depois de várias rodadas de mockup HTML aprovadas em conversa, o
+      `IndicacoesTab.jsx` foi reescrito: fundo azul-marinho contínuo
+      (`-mx-5 -mt-6` cancela o padding do `<main>` só nessa aba, pra
+      bater na borda da tela como as outras abas não fazem), herói
+      agora é `/public/indicacoes-hero.png` (imagem gerada por IA,
+      texto já embutido nos pixels — recortada e limpa localmente a
+      partir do banner original que o ChatGPT gerou).
+- [x] Cards "Indique aqui" / "Ver Indicações" com gradiente vívido
+      (laranja/azul) + botão de seta circular, texto todo em branco
+      (negrito no título E no subtítulo) — corrigido depois de um
+      round de "texto preto sumindo no fundo colorido".
+- [x] "Como funciona" virou card escuro translúcido com as 3 etapas em
+      colunas centralizadas (número + texto centralizados), em vez da
+      lista vertical antiga.
+- [x] Botão de WhatsApp (grande + nos cards da lista) trocado do emoji
+      📱 pro SVG oficial (`WhatsAppIcon`), mesmo ícone usado no
+      `JobCard`.
+- ⚠️ MUDANÇA IMPORTANTE: como o texto do herói agora é pixel de
+      imagem, os campos "eyebrow/título/subtítulo" do
+      `indicacoes_config` PARARAM DE FAZER EFEITO VISUAL — removidos
+      do `IndicacoesConfigEditor` (só "idade mínima" e "WhatsApp de
+      indicar" continuam editáveis de verdade). Pra mudar o texto do
+      herói, precisa gerar uma imagem nova e substituir
+      `/public/indicacoes-hero.png`.
+- Testado: build limpo + `react-dom/server` confirmando que a imagem
+  do herói, os textos dos cards e o "Como funciona" renderizam, e que
+  o editor antigo (campo "Título") realmente sumiu do Admin.
+
