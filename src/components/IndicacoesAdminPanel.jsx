@@ -15,10 +15,88 @@
 //     que está entrando automaticamente na aba pública.
 // ---------------------------------------------------------------
 
-import { HeartHandshake, ListChecks } from "lucide-react";
+import { useState } from "react";
+import { HeartHandshake, ListChecks, Check } from "lucide-react";
 import AIPublisher from "./AIPublisher.jsx";
 import JobsTable from "./JobsTable.jsx";
+import { WhatsAppIcon } from "./Badges.jsx";
+import { toWhatsAppLink } from "../utils/format.js";
 import { idadeIndicacaoLabel } from "../utils/jobParsing.js";
+
+// Uma vaga TRADICIONAL que qualifica por idade — o Admin decide aqui,
+// vaga a vaga, se ela é "ativada" pro cross-post (v23: deixou de ser
+// automático), pode corrigir o WhatsApp (o scraper às vezes não pega
+// esse campo) e testar o contato com o mesmo botão/ícone oficial do
+// WhatsApp usado no card da vaga.
+function QualifyingJobRow({ job, onToggleBadge, onUpdateWhatsapp }) {
+  const [whatsappInput, setWhatsappInput] = useState(job.whatsapp || "");
+  const [saved, setSaved] = useState(false);
+  const dirty = whatsappInput !== (job.whatsapp || "");
+  const waLink = toWhatsAppLink(job.whatsapp);
+
+  const handleSave = () => {
+    onUpdateWhatsapp(job.id, whatsappInput.trim());
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+  };
+
+  return (
+    <div className="rounded-xl border border-slate-100 p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="nv-body truncate text-[12.5px] font-semibold text-slate-800">{job.cargo}</p>
+          <p className="nv-body truncate text-[11px] text-slate-400">{job.empresa}</p>
+        </div>
+        <span className="nv-body flex-shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600">
+          {idadeIndicacaoLabel(job.idadeMaxima)}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Ativar/desativar cross-post — mesmo handler genérico de sempre
+            (handleToggleBadge), só que numa chave nova (indicacoesAtiva)
+            em vez de um selo pago. */}
+        <button
+          onClick={() => onToggleBadge(job.id, "indicacoesAtiva")}
+          className={`nv-body flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold transition-colors ${
+            job.indicacoesAtiva ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-500"
+          }`}
+        >
+          {job.indicacoesAtiva && <Check className="h-3 w-3" />}
+          {job.indicacoesAtiva ? "Ativa na aba pública" : "Ativar na aba pública"}
+        </button>
+
+        <input
+          value={whatsappInput}
+          onChange={(e) => setWhatsappInput(e.target.value)}
+          placeholder="WhatsApp (ex: 819012345678)"
+          className="nv-body min-w-0 flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11.5px] text-slate-700 outline-none focus:border-blue-400"
+        />
+        {dirty ? (
+          <button
+            onClick={handleSave}
+            className="nv-body flex-shrink-0 rounded-lg bg-blue-600 px-2.5 py-1.5 text-[11px] font-bold text-white"
+          >
+            Salvar
+          </button>
+        ) : saved ? (
+          <span className="nv-body flex-shrink-0 text-[11px] font-semibold text-emerald-600">Salvo!</span>
+        ) : waLink ? (
+          <a
+            href={waLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex flex-shrink-0 items-center gap-1.5 rounded-full bg-emerald-500 px-3 py-1.5 text-[11px] font-bold text-white"
+          >
+            <WhatsAppIcon className="h-3.5 w-3.5" /> WhatsApp
+          </a>
+        ) : (
+          <span className="nv-body flex-shrink-0 text-[10.5px] text-slate-400">Sem WhatsApp cadastrado</span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function IndicacoesConfigEditor({ config, setConfig }) {
   return (
@@ -94,6 +172,7 @@ export default function IndicacoesAdminPanel({
   planKey,
   quotaUsage,
   onToggleBadge,
+  onUpdateWhatsapp,
   onDelete,
   onDeleteMany,
   onTogglePreenchida,
@@ -144,22 +223,15 @@ export default function IndicacoesAdminPanel({
           <ListChecks className="h-4 w-4 text-blue-600" /> Vagas tradicionais que qualificam ({qualifyingTraditionalJobs.length})
         </h3>
         <p className="nv-body mb-3 text-[12px] text-slate-500">
-          Entram sozinhas no feed público de Indicações porque o anúncio original menciona idade — nenhuma ação precisa aqui, é só informativo.
+          O anúncio original menciona idade — mas só entram na aba pública de verdade as que você <b>ativar</b> aqui. Aproveite pra
+          conferir/corrigir o WhatsApp antes de ativar.
         </p>
         {qualifyingTraditionalJobs.length === 0 ? (
           <p className="nv-body py-4 text-center text-[12px] text-slate-400">Nenhuma vaga tradicional qualificando no momento.</p>
         ) : (
-          <div className="max-h-80 space-y-1.5 overflow-y-auto">
+          <div className="max-h-[28rem] space-y-2 overflow-y-auto">
             {qualifyingTraditionalJobs.map((j) => (
-              <div key={j.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 px-3 py-2">
-                <div className="min-w-0">
-                  <p className="nv-body truncate text-[12px] font-semibold text-slate-800">{j.cargo}</p>
-                  <p className="nv-body truncate text-[11px] text-slate-400">{j.empresa}</p>
-                </div>
-                <span className="nv-body flex-shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600">
-                  {idadeIndicacaoLabel(j.idadeMaxima)}
-                </span>
-              </div>
+              <QualifyingJobRow key={j.id} job={j} onToggleBadge={onToggleBadge} onUpdateWhatsapp={onUpdateWhatsapp} />
             ))}
           </div>
         )}

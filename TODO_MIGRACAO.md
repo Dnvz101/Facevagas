@@ -105,3 +105,26 @@ cadastro de Empreiteira E Prestador (com prévia ao vivo).
       um número em `indicacoes_config.whatsapp_indicar`; sem número,
       fica escondido com uma mensagem "em breve").
 
+## 🔧 v2.5.1 — Ativação manual do cross-post + WhatsApp no Admin
+- [x] `vagas.indicacoes_ativa` (boolean, nova coluna) — antes, TODA
+      vaga tradicional que qualificava por idade entrava sozinha no
+      feed público. Agora só entra se o Admin **ativar** ela
+      manualmente na lista "Vagas tradicionais que qualificam".
+      Indicação manual (`indicacao=true`) continua sempre visível,
+      sem depender dessa ativação.
+- [x] `isIndicacaoElegivel` virou duas funções em `jobParsing.js`:
+      `isIndicacaoQualificavel` (só o critério de idade) e
+      `isIndicacaoVisivel` (qualifica + ativada, ou é manual).
+- [x] Cada vaga qualificando agora mostra, direto na lista do Admin:
+      botão de ativar/desativar, campo pra corrigir o WhatsApp (o
+      scraper às vezes não captura esse campo) e o botão de contato com
+      o **mesmo ícone oficial do WhatsApp** (`WhatsAppIcon`) usado no
+      card da vaga.
+- [x] Novo handler `handleUpdateJobWhatsapp` no App.jsx (patch simples
+      via `updateJobInDB`, mesmo padrão dos outros handlers).
+- Testado: build limpo + testes de render via `react-dom/server` com 4
+  cenários (qualifica mas não ativa, qualifica e ativa, indicação
+  manual, não qualifica) confirmando que `isIndicacaoVisivel` decide
+  certo em cada caso, e o painel renderiza os botões certos conforme
+  o estado de cada vaga.
+

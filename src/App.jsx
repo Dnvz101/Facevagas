@@ -64,7 +64,7 @@ import {
 } from "./lib/supabase.js";
 import { personalStorageGet, personalStorageSet } from "./lib/personalStorage.js";
 
-import { uid, simplifyNihongo, normalizeProvincia, isIndicacaoElegivel } from "./utils/jobParsing.js";
+import { uid, simplifyNihongo, normalizeProvincia, isIndicacaoQualificavel, isIndicacaoVisivel } from "./utils/jobParsing.js";
 import { toWhatsAppLink } from "./utils/format.js";
 import { bumpDailyStat, generateAppIcon } from "./utils/misc.js";
 import { isDestaqueCicloConcluido, isNovoCicloConcluido, isJobStale } from "./utils/badgeCycles.js";
@@ -598,7 +598,7 @@ export default function App() {
     () =>
       jobs
         .filter((j) => j.status !== "rascunho" && !j.arquivada && !j.preenchida)
-        .filter((j) => isIndicacaoElegivel(j, indicacoesConfig.idadeMinima)),
+        .filter((j) => isIndicacaoVisivel(j, indicacoesConfig.idadeMinima)),
     // "jobs" já vem ordenado por created_at.desc direto da consulta ao
     // Supabase (ver fetchJobs em lib/supabase.js) — sem campo createdAt
     // mapeado no objeto job, então preserva essa ordem em vez de
@@ -606,11 +606,14 @@ export default function App() {
     [jobs, indicacoesConfig.idadeMinima]
   );
   const indicacoesManuaisJobs = useMemo(() => jobs.filter((j) => j.indicacao), [jobs]);
+  // Candidatas ao cross-post: TODAS as que qualificam por idade, sejam
+  // já ativadas ou não — o Admin decide vaga a vaga em
+  // IndicacoesAdminPanel (v23: deixou de ser automático).
   const qualifyingTraditionalJobs = useMemo(
     () =>
       jobs
         .filter((j) => !j.indicacao && j.status !== "rascunho" && !j.arquivada && !j.preenchida)
-        .filter((j) => isIndicacaoElegivel(j, indicacoesConfig.idadeMinima)),
+        .filter((j) => isIndicacaoQualificavel(j, indicacoesConfig.idadeMinima)),
     [jobs, indicacoesConfig.idadeMinima]
   );
 
@@ -906,6 +909,17 @@ export default function App() {
     setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, ...patch } : j)));
     if (dbStatus === "connected") {
       updateJobInDB(id, patch).catch((err) => console.error("Falha ao atualizar:", err));
+    }
+  };
+
+  // Corrigir/definir o WhatsApp de uma vaga TRADICIONAL direto da lista
+  // de "qualificam pra Indicações" — o scraper às vezes não captura
+  // esse campo, e sem WhatsApp o botão de contato na aba pública não
+  // teria pra onde ir.
+  const handleUpdateJobWhatsapp = (id, whatsapp) => {
+    setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, whatsapp } : j)));
+    if (dbStatus === "connected") {
+      updateJobInDB(id, { whatsapp }).catch((err) => console.error("Falha ao salvar WhatsApp:", err));
     }
   };
 
@@ -1576,6 +1590,7 @@ export default function App() {
                 planKey={planKey}
                 quotaUsage={quotaUsage}
                 onToggleBadge={handleToggleBadge}
+                onUpdateWhatsapp={handleUpdateJobWhatsapp}
                 onDelete={handleDelete}
                 onDeleteMany={handleDeleteMany}
                 onTogglePreenchida={handleTogglePreenchida}

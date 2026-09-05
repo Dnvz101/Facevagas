@@ -51,19 +51,26 @@ export function simplifyNihongo(nihongo) {
 }
 
 // ---------------------------------------------------------------
-// Aba Indicações (campanha 55+) — regra de elegibilidade do feed
-// unificado: entra sozinha (cross-post) qualquer vaga TRADICIONAL cujo
-// anúncio original mencionou idade (idadeMaxima != null) E aceita pelo
-// menos até "idadeMinima" (ou "sem limite" = 999) — nunca por ausência
-// de menção. Vagas marcadas manualmente como indicação (job.indicacao)
-// sempre entram, independente do número de idade.
+// Aba Indicações (campanha 55+) — duas perguntas diferentes:
+//  • isIndicacaoQualificavel: o anúncio MENCIONA idade e aceita pelo
+//    menos até "idadeMinima" (ou "sem limite" = 999)? É só o critério
+//    de elegibilidade — não decide se aparece pro candidato.
+//  • isIndicacaoVisivel: aparece de verdade no feed público? Indicação
+//    manual (job.indicacao) sempre aparece. Vaga TRADICIONAL só
+//    aparece se além de qualificar, o Admin ativou manualmente
+//    (job.indicacoesAtiva) — v23: deixou de ser 100% automático.
 // ---------------------------------------------------------------
-export function isIndicacaoElegivel(job, idadeMinima = 55) {
+export function isIndicacaoQualificavel(job, idadeMinima = 55) {
   if (!job) return false;
-  if (job.indicacao) return true;
   if (job.idadeMaxima == null) return false;
   if (job.idadeMaxima >= 999) return true;
   return job.idadeMaxima >= idadeMinima;
+}
+
+export function isIndicacaoVisivel(job, idadeMinima = 55) {
+  if (!job) return false;
+  if (job.indicacao) return true;
+  return isIndicacaoQualificavel(job, idadeMinima) && !!job.indicacoesAtiva;
 }
 
 // Texto amigável do limite de idade pro card da aba Indicações — sempre

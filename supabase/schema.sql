@@ -467,3 +467,15 @@ create policy "indicacoes_config_public_read" on public.indicacoes_config for se
 drop policy if exists "indicacoes_config_public_update" on public.indicacoes_config;
 create policy "indicacoes_config_public_update" on public.indicacoes_config for update using (true);
 
+-- =============================================================
+-- v23 — ativação manual do cross-post na aba Indicações. Antes, TODA
+-- vaga tradicional que "qualificava" por idade (idade_maxima alta ou
+-- 999) entrava sozinha no feed público. Agora vira uma etapa a mais:
+-- ela aparece na lista do Admin ("Vagas tradicionais que qualificam")
+-- só como CANDIDATA — só entra no feed público de verdade quando o
+-- Admin liga "indicacoes_ativa" pra ela. Indicação manual
+-- (vagas.indicacao = true) continua entrando sempre, sem precisar
+-- dessa ativação — a regra só existe pra vaga tradicional.
+-- =============================================================
+alter table public.vagas add column if not exists indicacoes_ativa boolean not null default false;
+

@@ -73,6 +73,7 @@ export function rowToJob(row) {
     arquivada: !!row.arquivada,
     idadeMaxima: row.idade_maxima ?? null,
     indicacao: !!row.indicacao, // origem: cadastrada manualmente via aba Indicações (55+)
+    indicacoesAtiva: !!row.indicacoes_ativa, // vaga TRADICIONAL ativada manualmente pro cross-post (indicação manual não depende disso)
   };
   for (const [jsKey, dbKey] of Object.entries(BADGE_DB_FIELDS)) job[jsKey] = !!row[dbKey];
   return job;
@@ -111,6 +112,7 @@ export function jobToRow(job) {
     arquivada: !!job.arquivada,
     idade_maxima: job.idadeMaxima ?? null,
     indicacao: !!job.indicacao,
+    indicacoes_ativa: !!job.indicacoesAtiva,
   };
   for (const [jsKey, dbKey] of Object.entries(BADGE_DB_FIELDS)) row[dbKey] = !!job[jsKey];
   return row;
@@ -164,6 +166,7 @@ export const supabaseAdapter = {
     if ("lastSeenAt" in patch) dbPatch.last_seen_at = patch.lastSeenAt ? new Date(patch.lastSeenAt).toISOString() : null;
     if ("arquivada" in patch) dbPatch.arquivada = !!patch.arquivada;
     if ("indicacao" in patch) dbPatch.indicacao = !!patch.indicacao;
+    if ("indicacoesAtiva" in patch) dbPatch.indicacoes_ativa = !!patch.indicacoesAtiva;
     for (const [jsKey, dbKey] of Object.entries(BADGE_DB_FIELDS)) {
       if (jsKey in patch) dbPatch[dbKey] = patch[jsKey];
     }
