@@ -37,13 +37,17 @@ Regras estritas:
 - Responda ESTRITAMENTE em JSON puro, sem markdown, sem texto antes ou depois, sem crases.
 
 Formato exato esperado:
-{"empresa":"","cargo":"","cidade":"","provincia":"","salarioHora":"","turno":"","nihongo":"","moradia":"","vagaHomens":"","vagaMulheres":"","conducao":"","tags":"","telefone":"","whatsapp":"","descricao":""}
+{"empresa":"","cargo":"","cidade":"","provincia":"","salarioHora":"","turno":"","nihongo":"","moradia":"","vagaHomens":"","vagaMulheres":"","conducao":"","tags":"","telefone":"","whatsapp":"","descricao":"","idadeMaxima":""}
 
 "salarioHora" deve conter APENAS dígitos, sem símbolo ¥ e sem separador de milhar (ex: "1500").
 "vagaHomens" e "vagaMulheres" devem ser exatamente "Sim" ou "Não".
 "tags" deve ser uma lista curta separada por vírgula com as palavras-chave mais relevantes do anúncio.
 "descricao" deve ser um RESUMO CURTO e fiel, em português, do texto do anúncio (funções, requisitos e condições principais).
-Regra de tamanho obrigatória: no MÁXIMO 220 caracteres (aproximadamente 2 a 3 frases curtas). Priorize as informações mais importantes e corte o resto — não ultrapasse o limite, e não adicione nada que não esteja no conteúdo original.`;
+Regra de tamanho obrigatória: no MÁXIMO 220 caracteres (aproximadamente 2 a 3 frases curtas). Priorize as informações mais importantes e corte o resto — não ultrapasse o limite, e não adicione nada que não esteja no conteúdo original.
+"idadeMaxima" — SÓ preencha quando o anúncio mencionar idade explicitamente (nunca deduza pela ausência de menção):
+  - Se o anúncio disser um limite claro tipo "até 55 anos" ou "no máximo 50 anos", retorne APENAS o número (ex: "55").
+  - Se o anúncio disser que aceita a partir de/acima de/mais de uma certa idade, usar "~NN anos", ou disser explicitamente "sem limite de idade" / "qualquer idade" — todos esses casos sinalizam que aceita gente mais velha SEM teto, então retorne a string exata "sem limite".
+  - Se o anúncio não mencionar idade de jeito nenhum, retorne "".`;
 
 export default function AIPublisher({ onPublish, currentPlan, planKey, canUseBadge, quotaUsage, prefill = {}, lockedFields = [], autoNovo = false }) {
   const [pastedText, setPastedText] = useState("");
@@ -209,6 +213,27 @@ export default function AIPublisher({ onPublish, currentPlan, planKey, canUseBad
           whatsapp: parsed.whatsapp || prefill.whatsapp || "",
           descricao: clampDescription(parsed.descricao || localExtraction.descricao || ""),
         };
+        // Idade máxima — prioriza o que a IA achou (string "NN", "sem
+        // limite" ou ""); se a IA não achou nada, cai pro fallback local
+        // (extractJobFromText já devolve número ou undefined). Nunca
+        // sobrescreve um valor que a pessoa já tinha digitado à mão se
+        // nem a IA nem o parser local encontraram nada dessa vez.
+        const idadeIA = String(parsed.idadeMaxima || "").trim().toLowerCase();
+        if (idadeIA === "sem limite") {
+          extracted.semLimiteIdade = true;
+          extracted.idadeMaxima = "";
+        } else if (/^\d{2,3}$/.test(idadeIA)) {
+          extracted.semLimiteIdade = false;
+          extracted.idadeMaxima = idadeIA;
+        } else if (localExtraction.idadeMaxima != null) {
+          if (localExtraction.idadeMaxima >= 999) {
+            extracted.semLimiteIdade = true;
+            extracted.idadeMaxima = "";
+          } else {
+            extracted.semLimiteIdade = false;
+            extracted.idadeMaxima = String(localExtraction.idadeMaxima);
+          }
+        }
         // Campos travados (ex: "empresa" da conta logada) NUNCA são
         // sobrescritos pela extração, mesmo que a IA tenha lido um nome
         // diferente no anúncio (o scraper às vezes captura quem postou,
@@ -229,6 +254,17 @@ export default function AIPublisher({ onPublish, currentPlan, planKey, canUseBad
       if (hasLocalData) {
         setForm((prev) => {
           const extracted = { ...localExtraction };
+          // Mesma conversão número->campo do caminho principal: o fallback
+          // local devolve idadeMaxima como número (ou 999 = sem limite),
+          // mas o formulário guarda string + checkbox separados.
+          if (extracted.idadeMaxima != null) {
+            if (extracted.idadeMaxima >= 999) {
+              extracted.semLimiteIdade = true;
+              extracted.idadeMaxima = "";
+            } else {
+              extracted.idadeMaxima = String(extracted.idadeMaxima);
+            }
+          }
           for (const key of lockedFields) {
             if (key in prev) extracted[key] = prev[key];
           }

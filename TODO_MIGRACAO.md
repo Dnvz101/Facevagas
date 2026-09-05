@@ -157,3 +157,28 @@ cadastro de Empreiteira E Prestador (com prévia ao vivo).
   do herói, os textos dos cards e o "Como funciona" renderizam, e que
   o editor antigo (campo "Título") realmente sumiu do Admin.
 
+## 🐛 v2.5.3 — Bugfix: Publicador Mágico não capturava idade mencionada
+- [x] Achado testando de verdade: colei uma vaga com "até 53 anos" no
+      texto e o campo "Idade máxima" ficou vazio no formulário — o
+      campo existia na TELA (adicionado no v2.5.0) mas o PROMPT de
+      extração da IA (`EXTRACTION_PROMPT` no AIPublisher.jsx) nunca
+      pedia esse dado, então a IA simplesmente não olhava pra idade.
+- [x] `EXTRACTION_PROMPT` agora pede "idadeMaxima" explicitamente, com
+      regra clara: número quando o anúncio dá um teto real ("até X"),
+      a string "sem limite" quando sinaliza abertura sem teto ("acima
+      de X", "a partir de X", "~X anos", "sem limite/restrição de
+      idade") — nunca inventa quando o anúncio não menciona idade.
+- [x] Novo `extractIdadeMaxima()` em `jobParsing.js` — mesma régua,
+      mas por regex, usado no parser LOCAL (fallback sem IA,
+      `extractJobFromText`) pra cobrir os dois caminhos de extração,
+      não só o da IA.
+- [x] Merge no AIPublisher: IA tem prioridade; se ela não achou nada,
+      cai pro fallback local; um valor "sem limite" (999) marca
+      corretamente o checkbox "Sem limite de idade" em vez de mostrar
+      literalmente "999" no campo de número.
+- Testado com os DOIS anúncios reais que motivaram o achado ("até 53
+  anos" e "Homens e mulheres ~50 anos") + mais 4 casos (sem menção,
+  "sem limite de idade", "acima de 55 anos", "no máximo 45 anos") — os
+  6 bateram certo. Testei também a lógica de merge IA+fallback
+  isoladamente (5 cenários, todos corretos). Build limpo.
+

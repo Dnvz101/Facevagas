@@ -261,6 +261,36 @@ export function reconcileSalary(candidateRaw, sourceText) {
 // Parser local — a "extractJobFromText" propriamente dita. Roda 100% no
 // navegador, sem depender da API: sempre retorna um objeto parcial (só
 // com os campos que conseguiu achar), nunca lança erro.
+// ---------------------------------------------------------------
+// Idade máxima mencionada no anúncio — usado tanto no fallback local
+// (extractJobFromText, sem IA) quanto documentado aqui pro prompt da
+// IA seguir a mesma régua. Regra igual à do scraper: só retorna algo
+// quando o texto MENCIONA idade de verdade — nunca por ausência.
+//
+// "até/no máximo N anos" -> N (é um teto de verdade)
+// "sem limite/restrição de idade", "qualquer idade" -> 999
+// "acima de / mais de / a partir de N anos", "~N anos" -> 999 — esses
+// padrões sinalizam abertura pra quem tem MAIS que N (não um teto),
+// então tratamos como "sem limite" pro propósito da campanha 55+: o
+// que importa aqui é "esse anúncio deixa claro que aceita gente mais
+// velha", não o número exato.
+// ---------------------------------------------------------------
+export function extractIdadeMaxima(rawText) {
+  const text = (rawText || "");
+  if (!text.trim()) return null;
+  if (/sem\s+(limite|restri[cç][aã]o)\s+de\s+idade|qualquer\s+idade|independente\s+da\s+idade/i.test(text)) return 999;
+
+  let m = text.match(/at[eé]\s+(?:cerca\s+de\s+)?(\d{2})\s*anos/i);
+  if (m) return parseInt(m[1], 10);
+  m = text.match(/(?:no\s+m[aá]ximo|m[aá]ximo\s+de)\s+(\d{2})\s*anos/i);
+  if (m) return parseInt(m[1], 10);
+
+  if (/(?:acima\s+de|mais\s+de|a\s+partir\s+de)\s+\d{2}\s*anos|~\s*\d{2}\s*anos|\d{2}\s*anos\s+ou\s+mais/i.test(text)) {
+    return 999;
+  }
+  return null;
+}
+
 export function extractJobFromText(rawText) {
   const text = (rawText || "").trim();
   if (!text) return {};
@@ -271,7 +301,6 @@ export function extractJobFromText(rawText) {
   const { salarioHora, salarioMax, bonuses } = classifySalaryMentions(text);
   if (salarioHora) result.salarioHora = String(salarioHora);
   if (salarioMax) result.salarioMax = String(salarioMax);
-
   // 2) Cargo padrão — primeira linha que pareça uma função de verdade
   // (ignora linhas que são só números, ¥ ou pontuação).
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -303,6 +332,11 @@ export function extractJobFromText(rawText) {
   // 7) Telefone — formato japonês típico, com ou sem traço
   const phoneMatch = text.match(/0\d{1,4}[-\s]?\d{2,4}[-\s]?\d{3,4}/);
   if (phoneMatch) result.telefone = phoneMatch[0];
+
+  // 7.5) Idade máxima mencionada — mesma régua do scraper (ver
+  // extractIdadeMaxima acima). null = não mencionou, fica de fora.
+  const idade = extractIdadeMaxima(text);
+  if (idade != null) result.idadeMaxima = idade;
 
   // 8) Descrição — usa o próprio texto colado (resumido) como fallback
   result.descricao = clampDescription(text);
