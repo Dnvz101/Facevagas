@@ -13,7 +13,7 @@ import { toWhatsAppLink, formatYen } from "../utils/format.js";
 import { salaryUnitLabel, safeCidade, idadeIndicacaoLabel } from "../utils/jobParsing.js";
 
 export default function IndicacaoCard({ job, onContact }) {
-  const waLink = toWhatsAppLink(job.whatsapp);
+  const waLink = toWhatsAppLink(job.whatsapp, job.cargo);
   const unit = salaryUnitLabel(job.salarioMax || job.salarioHora);
   const cidadeOk = safeCidade(job.cidade);
   const localLabel = [cidadeOk, job.provincia].filter(Boolean).join(" · ");

@@ -13,7 +13,7 @@ import { formatYen } from "../utils/format.js";
 import { salaryUnitLabel, simplifyTurno, simplifyNihongo, safeCidade, isTopSalarioRule } from "../utils/jobParsing.js";
 
 export default function JobCard({ job, isFlipped, onToggleFlip, onContact, onView, isTop, isHighlighted, onSimulate, isFavorited = false, onToggleFavorite }) {
-  const waLink = toWhatsAppLink(job.whatsapp);
+  const waLink = toWhatsAppLink(job.whatsapp, job.cargo);
 
   const stop = (e) => e.stopPropagation();
 

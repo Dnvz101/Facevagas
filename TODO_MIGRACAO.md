@@ -199,3 +199,32 @@ cadastro de Empreiteira E Prestador (com prévia ao vivo).
   anos" → 60) e o "até 53 anos" do v2.5.3 (continua 53) — todos
   corretos. Build limpo.
 
+## 💬 v2.5.5 — WhatsApp sempre sai com mensagem "veio do NihonVagas"
+- [x] Achado testando a lista "Vagas tradicionais que qualificam":
+      quando o campo `whatsapp` da vaga é um número puro (a maioria),
+      o botão de WhatsApp abria uma conversa EM BRANCO — só as vagas
+      cujo scraper já entregava um link `wa.me/...?text=` pronto
+      vinham com mensagem. `toWhatsAppLink` (format.js) agora aceita
+      um 2º parâmetro opcional (`cargo`): quando informado E o número
+      é puro (não veio como link pronto), monta
+      `?text=Olá! Vi a vaga de *{cargo}* no NihonVagas.jp...`
+      automaticamente.
+- [x] Link que já vem pronto do scraper (com `?text=` dele mesmo)
+      NUNCA é alterado — passa reto, do jeito que já funcionava.
+- [x] Atualizado em todo lugar que é candidato falando com empresa
+      sobre uma vaga específica: `JobCard.jsx`, `IndicacaoCard.jsx`,
+      `IndicacoesAdminPanel.jsx` (botão de teste na lista de
+      qualificam) — todos passam `job.cargo` agora.
+- [x] ⚠️ Os 3 lugares que usam `toWhatsAppLink` pra CONTATO DE SUPORTE
+      (`PlanComparisonCards`, `AlertBanner`, ambos com
+      `ADMIN_WHATSAPP_RAW`) e o link de alerta de vagas em `App.jsx`
+      continuam SEM passar cargo de propósito — eles já montam a
+      própria mensagem por fora, e o `?text=` automático quebraria
+      esse link (viraria dois `?text=` na mesma URL). Testado
+      explicitamente que isso não regrediu.
+- Testado com 4 cenários: número puro + cargo (ganha mensagem), número
+  puro sem cargo (suporte — continua limpo), link pronto do scraper
+  (nunca mexe), e a simulação exata do padrão usado em
+  PlanComparisonCards/AlertBanner (confirmado só um `?text=` na URL
+  final). Build limpo.
+

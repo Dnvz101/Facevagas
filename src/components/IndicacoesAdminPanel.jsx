@@ -32,7 +32,7 @@ function QualifyingJobRow({ job, onToggleBadge, onUpdateWhatsapp }) {
   const [whatsappInput, setWhatsappInput] = useState(job.whatsapp || "");
   const [saved, setSaved] = useState(false);
   const dirty = whatsappInput !== (job.whatsapp || "");
-  const waLink = toWhatsAppLink(job.whatsapp);
+  const waLink = toWhatsAppLink(job.whatsapp, job.cargo);
 
   const handleSave = () => {
     onUpdateWhatsapp(job.id, whatsappInput.trim());
