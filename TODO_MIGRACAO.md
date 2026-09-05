@@ -248,3 +248,27 @@ cadastro de Empreiteira E Prestador (com prévia ao vivo).
   que você mandou (Tobishima/Josi e Inuyama/Daikei) + build limpo.
   Vale um olhar seu no celular de verdade depois de subir.
 
+## 🔗 v2.5.7 — Link direto pra cada aba (pra compartilhar no Facebook etc.)
+- [x] Achado testando: não existia NENHUM jeito de linkar direto pra
+      uma aba específica — todo link pro site sempre abria em "Vagas",
+      mesmo compartilhando a URL enquanto em outra aba. `tab` era só
+      estado do React, nunca refletido na URL.
+- [x] Agora a URL sincroniza sozinha: trocar de aba atualiza
+      `?tab=indicacoes` (ou empreiteiras/calculadora/comunidade) na
+      barra de endereço via `history.replaceState` (sem recarregar a
+      página nem empilhar histórico de navegador a cada clique); "Vagas"
+      (padrão) mantém a URL limpa, sem parâmetro nenhum.
+      → Pra compartilhar a aba Indicações: entra nela no site e copia a
+      URL da barra de endereço — vai ficar `nihonvagas.jp/?tab=indicacoes`.
+- [x] Ao ABRIR um link assim, o site já carrega direto na aba certa.
+- ⚠️ Por segurança, só as abas públicas entram nesse esquema (vagas,
+      empreiteiras, calculadora, comunidade, indicacoes) — um link
+      com `?tab=admin` ou `?tab=minhaempresa` NUNCA abre esses painéis
+      (caem pra "Vagas"), porque esses dependem de login de verdade,
+      não só de trocar de aba.
+- Testado com jsdom simulando o navegador: 4 casos de carregamento
+  (limpo, `?tab=indicacoes`, `?tab=admin` bloqueado, `?tab=lixo`
+  inválido) + 3 casos de sincronização ao trocar de aba (incluindo
+  confirmar que trocar pra "admin" não mexe na URL) — os 7 bateram
+  certo. Build limpo.
+

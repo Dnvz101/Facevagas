@@ -76,7 +76,33 @@ import { initialJobs, initialRegisteredPartners, SERVICE_CATEGORIES_SEED, SERVIC
 
 export default function App() {
   const [jobs, setJobs] = useState(initialJobs);
-  const [tab, setTab] = useState("vagas");
+  // Aba atual sincronizada com a URL (?tab=indicacoes etc.) — só pras
+  // abas públicas (nunca "admin"/"minhaempresa": essas dependem de
+  // estado de login que ainda não existe no primeiro render, então um
+  // link com ?tab=admin não deve simplesmente "logar" ninguém).
+  // Sem isso, TODO link pro site sempre abria na aba "Vagas", mesmo
+  // que a pessoa quisesse compartilhar uma aba específica.
+  const PUBLIC_URL_TABS = ["vagas", "empreiteiras", "calculadora", "comunidade", "indicacoes"];
+  const [tab, setTab] = useState(() => {
+    if (typeof window === "undefined") return "vagas";
+    const fromUrl = new URLSearchParams(window.location.search).get("tab");
+    return PUBLIC_URL_TABS.includes(fromUrl) ? fromUrl : "vagas";
+  });
+
+  // Mantém a URL sincronizada sempre que a aba muda (troca por clique
+  // OU pela restauração acima) — assim "copiar o link da página" a
+  // qualquer momento sempre reflete a aba que a pessoa está vendo.
+  // "Vagas" (padrão) mantém a URL limpa, sem "?tab=" — só as outras
+  // abas ganham o parâmetro.
+  useEffect(() => {
+    if (!PUBLIC_URL_TABS.includes(tab)) return; // admin/minhaempresa nunca vão pra URL
+    const params = new URLSearchParams(window.location.search);
+    if (tab === "vagas") params.delete("tab");
+    else params.set("tab", tab);
+    const query = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+  }, [tab]);
+
   const [flippedIds, setFlippedIds] = useState(() => new Set());
 
   // Favoritos — pessoal (window.storage shared:false), então cada
