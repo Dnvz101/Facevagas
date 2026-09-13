@@ -491,3 +491,25 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   reembaralhando a cada clique), e uma vaga com 100 cliques não fica
   mais garantida no topo do grupo "outras". Build limpo.
 
+## 📊 v2.6.8 — Resumo por parceiro em "Parceiros & Selos"
+- [x] A pedido: cada parceiro na lista agora mostra um bloco de
+      resumo (só quando já tem pelo menos 1 vaga publicada) com:
+      total de cliques no WhatsApp, cliques/visualizações no card,
+      curtidas — tudo somado de todas as vagas da empresa — e o uso de
+      cada selo controlável (🔥 Destaque, ⭐ Recomendado, ⚡ Urgente)
+      contra a cota do plano atual dela (ex: "Recomendado 2/3").
+- [x] Selo que já bateu no limite da cota fica destacado em âmbar, pra
+      o Admin identificar rápido quem está "cheio" antes de tentar
+      ativar mais um selo pra essa empresa.
+- [x] Selo sem direito nenhum no plano atual (cota 0) nem aparece na
+      lista — evita ficar mostrando "Destaque 0/0" pra toda conta
+      Grátis, que é informação sem uso nenhum.
+- [x] Vínculo vaga↔empresa usa o mesmo critério (nome) que o resto do
+      Admin já usa (handleToggleVerificado/handleRenamePartner), pra
+      não introduzir uma segunda fonte de verdade divergente.
+- Testado: render real (`react-dom/server`) com 3 vagas de uma empresa
+  no plano Start (cota de 3 Recomendado) — soma de cliques bateu certo
+  (55 WhatsApp), "Recomendado 3/3" apareceu com o destaque âmbar de
+  limite batido, e uma empresa sem vaga nenhuma não mostrou bloco de
+  resumo vazio. Build limpo.
+

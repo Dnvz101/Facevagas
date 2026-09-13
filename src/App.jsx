@@ -1725,6 +1725,8 @@ export default function App() {
         isOpen={partnerManagementOpen}
         onClose={() => setPartnerManagementOpen(false)}
         registeredPartners={registeredPartners}
+        jobs={jobs}
+        planos={planos}
         onToggleVerificado={handleToggleVerificado}
         onChangePlano={handleChangePartnerPlano}
         onRename={handleRenamePartner}
