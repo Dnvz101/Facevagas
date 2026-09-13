@@ -399,3 +399,21 @@ revoke update on public.vagas from anon;
 grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
 ```
 
+## 🐛 v2.6.2 — Ranking podia elegir vaga já arquivada (clique não ia a lugar nenhum)
+- [x] Achado ao vivo: "Top 1 · Zero Nihongo" não navegava ao clicar.
+      Causa: `RankingsTab` calculava os Top 5 em cima de `jobs` CRU
+      (todas as vagas, incluindo arquivada/rascunho), mas
+      `handleGoToJob` procura a vaga em `sortedJobs` (que já filtra
+      essas fora, igual a aba Vagas mostra). Se a vaga #1 do ranking
+      tivesse sido arquivada nesse meio-tempo — bem provável logo
+      depois do relógio automático de expiração de selos rodar —, ela
+      aparecia no ranking mas nunca era encontrada pra rolar até ela:
+      falha silenciosa, sem erro nenhum na tela.
+- [x] Corrigido passando `sortedJobs` (não `jobs`) pro `RankingsTab` —
+      agora as duas telas usam exatamente a mesma lista de vagas
+      visíveis, então o Ranking estruturalmente nunca mais pode eleger
+      algo que não existe do outro lado.
+- Testado: simulei o cenário exato (vaga #1 arquivada) — com `jobs`
+  cru, a vaga eleita não era encontrada (bug confirmado); com
+  `sortedJobs`, a vaga eleita é sempre encontrada. Build limpo.
+

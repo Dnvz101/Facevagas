@@ -1455,7 +1455,14 @@ export default function App() {
         {tab === "empreiteiras" && (
           <div className="space-y-4">
             <h2 className="nv-display text-[16px] font-bold text-slate-900">Rankings do site</h2>
-            <RankingsTab jobs={jobs} onGoToJob={handleGoToJob} />
+            {/* "sortedJobs" (não "jobs" cru) — precisa ser exatamente a
+                mesma lista visível na aba Vagas (sem rascunho/arquivada),
+                senão o Ranking pode eleger uma vaga que já não existe
+                mais pro visitante, e o clique falha silenciosamente (o
+                scroll procura o card pra sempre e desiste sem avisar
+                nada — foi exatamente o que você viu com o Top 1 Zero
+                Nihongo). */}
+            <RankingsTab jobs={sortedJobs} onGoToJob={handleGoToJob} />
           </div>
         )}
 
