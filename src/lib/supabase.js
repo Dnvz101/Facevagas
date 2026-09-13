@@ -146,7 +146,26 @@ export function jobToRow(job) {
 export const supabaseAdapter = {
   async fetchJobs() {
     const rows = await supabaseRequest("vagas?select=*&order=created_at.desc");
-    return rows.map(rowToJob);
+    const jobs = rows.map(rowToJob);
+    // Rede de segurança: dois "id" iguais na lista fazem o React tratar
+    // os cards como se fossem O MESMO componente — clicar em um vira
+    // TODOS que compartilham aquele id (foi exatamente o bug "clico
+    // numa vaga e vira a página inteira" achado ao vivo). Isso nunca
+    // deveria acontecer com um id de verdade do banco, então, se
+    // acontecer, é sinal de dado duplicado em algum import — mantém só
+    // a primeira ocorrência e avisa no console qual "id" repetiu, pra
+    // dar pra rastrear a origem depois sem travar a tela pro visitante.
+    const vistos = new Set();
+    const semDuplicata = [];
+    for (const job of jobs) {
+      if (vistos.has(job.id)) {
+        console.error(`fetchJobs: id duplicado ignorado (mantida só a primeira ocorrência): ${job.id} — "${job.cargo}" @ ${job.empresa}`);
+        continue;
+      }
+      vistos.add(job.id);
+      semDuplicata.push(job);
+    }
+    return semDuplicata;
   },
   async insertJob(job) {
     const rows = await dbWrite("vagas", "insert", { rows: jobToRow(job) });

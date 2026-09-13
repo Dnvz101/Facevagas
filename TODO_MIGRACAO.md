@@ -417,3 +417,21 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   cru, a vaga eleita não era encontrada (bug confirmado); com
   `sortedJobs`, a vaga eleita é sempre encontrada. Build limpo.
 
+## 🛡️ v2.6.3 — Rede de segurança contra ID duplicado (card "flipando todos juntos")
+- [x] Relatado ao vivo: clicar num card pra virar, nas páginas 2/3/4
+      da lista de Vagas, virava TODOS os cards daquela página junto.
+      Sintoma clássico de dois registros com o mesmo `id` — o React
+      trata cards com `id` repetido como "o mesmo componente", então
+      virar um vira todos que compartilham aquele id. (Quando testado
+      de novo, pareceu ter sumido sozinho — pode ter sido uma
+      duplicata pontual que já não existe mais no banco.)
+- [x] `fetchJobs` (lib/supabase.js) agora remove duplicata de `id`
+      automaticamente (mantém só a primeira ocorrência) e avisa no
+      console do navegador qual vaga foi ignorada — assim, se acontecer
+      de novo, dá pra ver exatamente qual registro duplicou e de onde
+      veio, sem o visitante nunca ver o bug do card se comportando
+      estranho.
+- Testado: simulei uma resposta do Supabase com um "id" repetido de
+  propósito — a duplicata foi removida e o aviso certo apareceu no
+  console. Build limpo.
+
