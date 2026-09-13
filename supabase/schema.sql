@@ -479,3 +479,83 @@ create policy "indicacoes_config_public_update" on public.indicacoes_config for 
 -- =============================================================
 alter table public.vagas add column if not exists indicacoes_ativa boolean not null default false;
 
+-- =============================================================
+-- v24 — CONSERTO DE SEGURANÇA. Duas falhas reais achadas em uso:
+--
+-- 1) A senha de TODA empresa cadastrada em "parceiros" ia em texto
+--    puro pro navegador de QUALQUER visitante (fetchPartnersFromDB
+--    fazia "select=*", e o login comparava direto no navegador contra
+--    essa lista). Dava pra ver a senha de qualquer empresa só abrindo
+--    Ferramentas de Desenvolvedor → Rede, sem nem tentar logar.
+--
+-- 2) Praticamente toda tabela do banco (vagas, banner, planos,
+--    parceiros, indicacoes_config, comunidade_conteudo,
+--    service_categories, service_listings) tinha política de escrita
+--    "using (true)" — ou seja, sem checar login nenhum. O login de
+--    Super Admin só escondia os BOTÕES da tela; qualquer um sabendo a
+--    URL do Supabase (visível em qualquer requisição de rede)
+--    conseguia apagar vagas, reescrever banner, mudar preço de plano
+--    etc. sem nunca ter feito login.
+--
+-- O conserto: toda escrita sensível agora passa por
+-- api/db-write.js (novo), que exige um token de sessão assinado
+-- (emitido por api/admin-login.js / api/partner-login.js /
+-- api/partner-signup.js) e só DEPOIS disso grava usando a service
+-- role key (que ignora RLS). As políticas "using (true)" de
+-- INSERT/UPDATE/DELETE abaixo são derrubadas — a partir de agora, só
+-- a service role consegue escrever nessas tabelas, e só o backend
+-- decide se o pedido tem permissão.
+--
+-- Ficam de fora desse trancamento, de propósito, só o que é
+-- legitimamente público (candidato sem login nenhum):
+--  • "alertas_vagas" (inscrição em alerta de vaga) — continua aberto.
+--  • "site_stats" (contador de visita, sem dado sensível) — continua aberto.
+--  • 4 colunas de "vagas" (clicks/views/favoritos/daily_stats) — todo
+--    visitante incrementa isso ao ver/clicar numa vaga; liberado só
+--    nessas 4 colunas via GRANT (não a linha toda), então ninguém
+--    consegue mudar preço/empresa/selo por esse caminho.
+-- =============================================================
+
+-- --- 1) parceiros: nunca mais expor a senha pro navegador ---
+revoke select (password) on public.parceiros from anon, authenticated;
+-- Sem política de escrita pública nenhuma daqui pra frente — todo
+-- INSERT (cadastro) passa por api/partner-signup.js, todo
+-- UPDATE/DELETE por api/db-write.js. Os dois usam a service role key,
+-- que ignora RLS por completo, então não precisam de política aqui.
+drop policy if exists "parceiros_public_write" on public.parceiros;
+
+-- --- 2) vagas: dono de verdade (partner_id) + fecha escrita direta ---
+alter table public.vagas add column if not exists partner_id text;
+-- Backfill: vagas já publicadas por uma empresa (hoje só ligadas pelo
+-- nome em "empresa") ganham o partner_id de verdade, pra não perder o
+-- direito de editar o próprio anúncio depois dessa migração.
+update public.vagas v set partner_id = p.id
+  from public.parceiros p
+  where v.partner_id is null and v.empresa = p.name;
+
+drop policy if exists "vagas_public_insert" on public.vagas;
+drop policy if exists "vagas_public_update" on public.vagas;
+drop policy if exists "vagas_public_delete" on public.vagas;
+-- Só as 4 colunas de contador continuam graváveis por qualquer
+-- visitante (sem login) — o resto (conteúdo, selos, status) só pelo
+-- gateway com sessão.
+revoke update on public.vagas from anon;
+grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
+
+-- --- 3) banners, planos, indicações, comunidade, categorias, anúncios: fecha escrita direta ---
+drop policy if exists "banner_public_update" on public.banner;
+drop policy if exists "alerta_banner_public_update" on public.alerta_banner;
+drop policy if exists "comunidade_banner_public_update" on public.comunidade_banner;
+drop policy if exists "indicacoes_config_public_update" on public.indicacoes_config;
+drop policy if exists "planos_public_write" on public.planos;
+drop policy if exists "comunidade_conteudo_public_insert" on public.comunidade_conteudo;
+drop policy if exists "comunidade_conteudo_public_delete" on public.comunidade_conteudo;
+drop policy if exists "service_categories_public_all" on public.service_categories;
+drop policy if exists "service_listings_public_insert" on public.service_listings;
+drop policy if exists "service_listings_public_update" on public.service_listings;
+drop policy if exists "service_listings_public_delete" on public.service_listings;
+
+-- Leitura pública continua igual em tudo (o site inteiro depende
+-- disso pra carregar sem exigir login de ninguém) — só a ESCRITA
+-- mudou de dono nessa migração.
+

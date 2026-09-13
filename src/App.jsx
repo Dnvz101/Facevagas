@@ -61,7 +61,9 @@ import {
   fetchPlanosFromDB, upsertPlanosInDB,
   fetchPartnersFromDB, upsertPartnersInDB, deletePartnerFromDB,
   fetchIndicacoesConfigFromDB, upsertIndicacoesConfigInDB,
+  incrementJobStatInDB,
 } from "./lib/supabase.js";
+import { setAdminToken, clearAdminToken, setPartnerToken, clearPartnerToken } from "./lib/session.js";
 import { personalStorageGet, personalStorageSet } from "./lib/personalStorage.js";
 
 import { uid, simplifyNihongo, normalizeProvincia, isIndicacaoQualificavel, isIndicacaoVisivel } from "./utils/jobParsing.js";
@@ -545,6 +547,19 @@ export default function App() {
   // propósito aqui (não precisa de precisão de segundo). Numa migração
   // real pro Supabase, isso viraria um cron/edge function rodando no
   // servidor, não no navegador de quem estiver com a aba aberta.
+  //
+  // ⚠️ v24: esse write agora passa pelo gateway seguro (updateJobInDB
+  // → api/db-write.js), que exige sessão de Admin/Parceiro. Antes,
+  // QUALQUER visitante (sem login nenhum) conseguia persistir essa
+  // mudança — o que também significava que um selo pago (🔥 Destaque)
+  // podia ser LIGADO à força por qualquer um mandando a requisição
+  // certa, de graça, sem nunca ter pago nada. Agora isso só GRAVA de
+  // verdade quando alguém logado (Admin ou o próprio Parceiro) está
+  // com a aba aberta no momento — o efeito visual (na tela de quem
+  // está vendo) continua instantâneo pra todo mundo, só a persistência
+  // no banco que depende de alguém logado por perto. Won't-fix por
+  // ora: o certo mesmo é isso virar um cron job no servidor (comentário
+  // acima já dizia isso antes dessa mudança de segurança).
   useEffect(() => {
     const checkAutoCycles = () => {
       setJobs((prev) => {
@@ -734,7 +749,11 @@ export default function App() {
         const nextClicks = j.clicks + 1;
         const nextDaily = bumpDailyStat(j.dailyStats, "clicks");
         if (dbStatus === "connected") {
-          updateJobInDB(id, { clicks: nextClicks, dailyStats: nextDaily }).catch((err) => console.error("Falha ao salvar clique:", err));
+          // Público, sem login (qualquer visitante pode clicar) — usa o
+          // caminho de contador (incrementJobStatInDB), nunca o gateway
+          // de escrita, que exigiria sessão. Ver comentário em
+          // supabaseAdapter.incrementJobStat (lib/supabase.js).
+          incrementJobStatInDB(id, { clicks: nextClicks, dailyStats: nextDaily }).catch((err) => console.error("Falha ao salvar clique:", err));
         }
         return { ...j, clicks: nextClicks, dailyStats: nextDaily };
       })
@@ -755,7 +774,8 @@ export default function App() {
         const nextViews = (j.views || 0) + 1;
         const nextDaily = bumpDailyStat(j.dailyStats, "views");
         if (dbStatus === "connected") {
-          updateJobInDB(id, { views: nextViews, dailyStats: nextDaily }).catch((err) => console.error("Falha ao salvar visualização:", err));
+          // Público, sem login — mesma lógica do clique acima.
+          incrementJobStatInDB(id, { views: nextViews, dailyStats: nextDaily }).catch((err) => console.error("Falha ao salvar visualização:", err));
         }
         return { ...j, views: nextViews, dailyStats: nextDaily };
       })
@@ -811,7 +831,8 @@ export default function App() {
         if (j.id !== id) return j;
         const nextCount = Math.max(0, (j.favoritos || 0) + (willFavorite ? 1 : -1));
         if (dbStatus === "connected") {
-          updateJobInDB(id, { favoritos: nextCount }).catch((err) => console.error("Falha ao salvar contador de favoritos:", err));
+          // Público, sem login — mesma lógica do clique acima.
+          incrementJobStatInDB(id, { favoritos: nextCount }).catch((err) => console.error("Falha ao salvar contador de favoritos:", err));
         }
         return { ...j, favoritos: nextCount };
       })
@@ -1094,66 +1115,72 @@ export default function App() {
     }
   };
 
-  // Cadastro de parceiro (PartnerAuthModal) — cria a entrada em
-  // registeredPartners (fonte única, também usada pro login e pra gestão
-  // do Super Admin) e já loga a empresa na Área do Cliente (aba "minhaempresa").
-  // ⚠️ "password" fica só no objeto local — numa migração real pro
-  // Supabase, isso vira Supabase Auth (signUp) de verdade.
+  // Cadastro de parceiro (PartnerAuthModal) — v24: agora chama
+  // api/partner-signup.js (servidor), que cria a linha em "parceiros"
+  // com a service role key e já devolve um token de sessão — antes,
+  // isso mexia direto no estado local e dependia de um useEffect em
+  // segundo plano pra persistir (upsertPartnersInDB), que exigia
+  // sessão e não existia ainda nesse momento do fluxo (cadastro é
+  // literalmente ANTES de qualquer login).
   const handlePartnerSignup = async (formData) => {
-    const newPartner = {
-      id: uid(),
-      tipo: formData.tipo,
-      name: formData.name,
-      email: formData.email,
-      password: formData.password,
-      phonePt: formData.phonePt,
-      phoneJp: formData.phoneJp,
-      planKey: "gratis", // toda empresa nova entra no Grátis — upgrade é fluxo de pagamento futuro
-      seloVerificado: false,
-    };
-    setRegisteredPartners((prev) => [...prev, newPartner]);
-    setCurrentClientCompanyId(newPartner.id);
-    setTab("minhaempresa");
+    const isNewListingCategory = formData.tipo === "prestador" && formData.isNewListingCategory;
+    const newCategoryColor = isNewListingCategory
+      ? CATEGORY_COLOR_OPTIONS[serviceCategories.length % CATEGORY_COLOR_OPTIONS.length].key
+      : undefined;
 
-    // Prestador de serviço: o cadastro já cria o primeiro anúncio junto
-    // — categoria (nova, se for o caso) + o anúncio em si.
-    if (formData.tipo === "prestador") {
-      if (formData.isNewListingCategory) {
-        const nextColor = CATEGORY_COLOR_OPTIONS[serviceCategories.length % CATEGORY_COLOR_OPTIONS.length].key;
-        handleSaveServiceCategories([...serviceCategories, { nome: formData.listingCategoria, color: nextColor, icon: "Building2" }]);
-      }
-      handleAddServiceListing({
-        providerId: newPartner.id,
-        categoria: formData.listingCategoria,
-        nome: formData.name,
-        descricao: formData.listingDescricao,
-        whatsapp: formData.phonePt,
-        likes: 0,
-        status: "publicado",
-      });
+    const res = await fetch("/api/partner-signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...formData, newCategoryColor }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || "Não foi possível concluir o cadastro.");
     }
+
+    setPartnerToken(data.token);
+    setRegisteredPartners((prev) => [...prev, data.partner]);
+    if (isNewListingCategory) {
+      setServiceCategories((prev) => [...prev, { nome: formData.listingCategoria, color: newCategoryColor, icon: "Building2" }]);
+    }
+    if (data.listing) {
+      setServiceListings((prev) => [data.listing, ...prev]);
+    }
+    setCurrentClientCompanyId(data.partner.id);
+    setTab("minhaempresa");
   };
 
   // Login de parceiro já cadastrado — busca em registeredPartners
-  // (chamado de dentro do PartnerAuthModal, que já validou email/senha).
-  const handleClientLogin = (partner) => {
+  // (chamado de dentro do PartnerAuthModal, que já validou email/senha
+  // no SERVIDOR agora — ver api/partner-login.js). v24: recebe também
+  // o token de sessão, exigido pelo gateway de escrita pra qualquer
+  // alteração que essa empresa fizer (publicar vaga própria, editar
+  // anúncio de serviço, etc.).
+  const handleClientLogin = (partner, token) => {
+    setPartnerToken(token);
     setCurrentClientCompanyId(partner.id);
     setTab("minhaempresa");
   };
 
   const handleClientLogout = () => {
+    clearPartnerToken();
     setCurrentClientCompanyId(null);
     setTab("vagas");
   };
 
   // Super Admin — login separado do fluxo de parceiro (não é uma
   // empresa, é acesso master). Vai direto pro painel Admin existente.
-  const handleSuperAdminLogin = () => {
+  // v24: recebe o token assinado (ver api/admin-login.js) e guarda em
+  // session.js — é esse token que o gateway de escrita
+  // (api/db-write.js) exige pra qualquer alteração feita como Admin.
+  const handleSuperAdminLogin = (token) => {
+    setAdminToken(token);
     setIsSuperAdmin(true);
     setTab("admin");
   };
 
   const handleSuperAdminLogout = () => {
+    clearAdminToken();
     setIsSuperAdmin(false);
     setCurrentClientCompanyId(null);
     setTab("vagas");

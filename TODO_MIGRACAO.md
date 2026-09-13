@@ -272,3 +272,95 @@ cadastro de Empreiteira E Prestador (com prévia ao vivo).
   confirmar que trocar pra "admin" não mexe na URL) — os 7 bateram
   certo. Build limpo.
 
+## 🚨 v2.6.0 — CONSERTO DE SEGURANÇA (leitura obrigatória antes de subir)
+Achado revisando o projeto com calma: duas falhas reais, uma delas já
+explorável hoje sem precisar de nada sofisticado.
+
+**1) Vazamento de senha.** `fetchPartnersFromDB` fazia `select=*` na
+tabela `parceiros`, e o login de empresa comparava e-mail/senha DIRETO
+NO NAVEGADOR contra essa lista. Ou seja: a senha de TODA empresa
+cadastrada (Empreiteira/Prestador/Loja) chegava em texto puro pro
+navegador de QUALQUER visitante — dava pra ver abrindo Ferramentas do
+Desenvolvedor → Rede, sem nem tentar logar.
+
+**2) Escrita sem login.** Praticamente toda tabela (`vagas`, `banner`,
+`planos`, `parceiros`, `indicacoes_config`, `comunidade_conteudo`,
+`service_categories`, `service_listings`) tinha política de RLS
+`using (true)` pra INSERT/UPDATE/DELETE — sem checar login nenhum. O
+login de Super Admin só escondia os BOTÕES da tela; a URL do Supabase
+é visível em qualquer requisição de rede, e com ela qualquer um
+conseguia apagar vagas, reescrever banner, mudar preço de plano etc.
+sem nunca ter logado.
+
+### O que mudou
+- [x] **3 novas Vercel Functions**: `api/partner-login.js` (login de
+      empresa verificado no servidor, nunca mais no navegador),
+      `api/partner-signup.js` (cadastro de empresa nova — único caso
+      de escrita em "parceiros" sem sessão prévia; plano sempre
+      "grátis" e selo sempre "false" fixados no servidor, nunca
+      aceitos do navegador), `api/db-write.js` (portão único de
+      escrita pra tudo mais sensível).
+- [x] `api/admin-login.js` agora emite um **token de sessão assinado**
+      (`api/_lib/session.js`, HMAC próprio via `crypto` do Node, sem
+      dependência nova) em vez de só `success: true/false` — antes o
+      login não deixava NADA que o servidor pudesse conferir depois.
+- [x] `api/db-write.js`: confere o token antes de qualquer escrita.
+      Admin tem acesso a uma lista fixa de tabelas; Parceiro só grava
+      nas PRÓPRIAS linhas (`vagas.partner_id` / `service_listings.
+      provider_id`), e esse "dono" é sempre decidido pelo SERVIDOR a
+      partir do token — nunca aceito de um campo que o navegador
+      mandou (testei explicitamente: mandar `partner_id` de outra
+      empresa no corpo da requisição é ignorado, o servidor usa o
+      dono de verdade).
+- [x] `vagas.partner_id` (nova coluna) — com backfill automático pras
+      vagas já publicadas (casadas por nome da empresa), pra nenhuma
+      empresa perder o direito de editar o próprio anúncio depois
+      dessa migração. O gateway permite editar uma linha já sua OU
+      "reivindicar" uma linha ainda sem dono (`partner_id is null` —
+      caso de vaga do scraper sendo assumida pela primeira vez).
+- [x] `lib/supabase.js` reescrito: toda escrita sensível passa pelo
+      gateway agora; os 4 contadores que QUALQUER visitante anônimo
+      incrementa (clique no WhatsApp, visualização, favorito) ficaram
+      num caminho público separado (`incrementJobStatInDB`), sem
+      exigir login — e o banco (schema v24) só libera essas 4 colunas
+      especificamente pra escrita pública, nunca o resto da vaga.
+- [x] `schema.sql` v24: `revoke select (password) on parceiros` (fecha
+      o vazamento na raiz, no banco — mesmo se algum código no
+      frontend tentar pedir de novo, o banco recusa), `drop policy` em
+      toda escrita `using(true)` das tabelas sensíveis, `grant update`
+      restrito a 4 colunas em `vagas` pra `anon`.
+- ⚠️ Fora do escopo dessa rodada, documentado como próximo passo:
+  senha ainda em texto puro nas tabelas (era assim desde o início,
+  não piorou nem melhorou aqui — migrar pra hash/Supabase Auth de
+  verdade é o passo seguinte); o relógio de expiração automática de
+  selos (🔥 Destaque/🆕 Nova Vaga) que roda no navegador de QUALQUER
+  visitante agora só PERSISTE no banco quando alguém logado (Admin ou
+  a própria empresa) está com a aba aberta no momento — o certo de
+  verdade é isso virar um cron job no servidor, mas não dava pra
+  incluir nessa mesma rodada sem arriscar qualidade.
+- Testado: build limpo + checagem de imports em todos os arquivos
+  novos/alterados + **12 cenários de autorização do gateway rodados
+  de verdade** (chamando o handler real com `fetch` mockado): sem
+  token→401, tabela fora da lista→403, parceiro em tabela de
+  admin→403, admin escreve livre, parceiro sempre tem `partner_id`
+  forçado pro próprio (mesmo mandando o de outra empresa no corpo),
+  reivindicação de vaga sem dono funciona, upsert com
+  `merge-duplicates`, delete sem filtro só pra Admin, parceiro NUNCA
+  consegue delete sem filtro (o `or=` do dono sempre entra). Também
+  testei a assinatura de sessão isolada: token adulterado rejeitado,
+  expirado rejeitado, segredo diferente rejeitado, entradas
+  inválidas nunca quebram (só retornam null).
+
+### ⚠️ AÇÃO OBRIGATÓRIA ANTES DE PUBLICAR
+1. Rodar o `schema.sql` inteiro de novo no SQL Editor do Supabase
+   (contém o v24 no final).
+2. Adicionar a variável de ambiente nova na Vercel:
+   `ADMIN_SESSION_SECRET` — uma string aleatória longa (gere com
+   `openssl rand -hex 32` ou parecido). Sem ela, login para de
+   funcionar de propósito.
+3. Depois de publicar, testar de verdade: login de Admin, login de
+   uma empresa já cadastrada, cadastro de empresa nova, publicar/
+   editar uma vaga como empresa, e publicar/editar como Admin —
+   nessa ordem, porque essa mudança toca o coração de como tudo se
+   autentica.
+

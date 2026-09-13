@@ -104,34 +104,46 @@ export default function PartnerAuthModal({ isOpen, onClose, registeredPartners, 
     }
   };
 
-  // Antes: comparava e-mail/senha do Super Admin direto aqui (texto
-  // puro no código). Agora chama a Vercel Function (api/admin-login.js
-  // via src/lib/adminAuth.js), que verifica no servidor contra a
-  // tabela "admin_users" — sem RLS pública, protegida pela service
-  // role key. Isso só funciona com o site publicado de verdade (ver
-  // TODO_MIGRACAO.md).
+  // v24: e-mail/senha do Super Admin E do Parceiro agora são
+  // conferidos no SERVIDOR (api/admin-login.js / api/partner-login.js)
+  // via src/lib/adminAuth.js — nunca mais comparados aqui no
+  // navegador. Antes, a senha de TODAS as empresas cadastradas vinha
+  // em texto puro pro navegador (fetchPartnersFromDB fazia
+  // "select=*"), e o login de parceiro comparava direto contra essa
+  // lista — ou seja, qualquer visitante conseguia ver a senha de
+  // qualquer empresa só olhando a aba de Rede do navegador. Isso só
+  // funciona com o site publicado de verdade (ver TODO_MIGRACAO.md).
   const handleLogin = async () => {
-    const emailLower = loginEmail.trim().toLowerCase();
+    const emailTrim = loginEmail.trim();
     setLoginError(null);
     setLoggingIn(true);
 
-    const isSuperAdmin = await checkSuperAdminLogin(loginEmail.trim(), loginPassword);
-    if (isSuperAdmin) {
-      onSuperAdminLogin();
+    const adminToken = await checkSuperAdminLogin(emailTrim, loginPassword);
+    if (adminToken) {
+      onSuperAdminLogin(adminToken);
       handleClose();
       return;
     }
 
-    const partner = registeredPartners.find(
-      (p) => p.email.toLowerCase() === emailLower && p.password === loginPassword
-    );
-    if (!partner) {
-      setLoginError("E-mail ou senha incorretos.");
+    try {
+      const res = await fetch("/api/partner-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailTrim, password: loginPassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        setLoginError("E-mail ou senha incorretos.");
+        setLoggingIn(false);
+        return;
+      }
+      onClientLogin(data.partner, data.token);
+      handleClose();
+    } catch (err) {
+      console.error("Falha ao verificar login de parceiro:", err);
+      setLoginError("Não foi possível verificar o login agora. Tente de novo em instantes.");
       setLoggingIn(false);
-      return;
     }
-    onClientLogin(partner);
-    handleClose();
   };
 
   if (!isOpen) return null;

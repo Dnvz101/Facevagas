@@ -28,6 +28,31 @@ export async function supabaseRequest(path, options = {}) {
   return text ? JSON.parse(text) : null;
 }
 
+// ---------------------------------------------------------------
+// Gateway seguro de escrita (api/db-write.js) — ver comentário lá pro
+// contexto completo. Qualquer escrita em tabela sensível (conteúdo de
+// vaga, banner, planos, parceiros etc.) passa por aqui em vez de ir
+// direto pro Supabase com a anon key. Exige sessão (Admin ou Parceiro
+// dono da linha) — sem token válido, lança erro (quem chama já tem
+// ".catch(err => console.error(...))" no App.jsx, então isso vira só
+// um log de erro, não quebra a tela).
+// ---------------------------------------------------------------
+import { getActiveSessionToken } from "./session.js";
+
+async function dbWrite(table, action, { rows, match } = {}) {
+  const token = getActiveSessionToken();
+  if (!token) throw new Error("Sessão expirada ou ausente — faça login de novo pra salvar essa alteração.");
+  const res = await fetch("/api/db-write", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, table, action, rows, match }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `Erro ${res.status} ao gravar.`);
+  return body.data;
+}
+
+
 // Mapa dos selos: chave usada no app (camelCase) <-> coluna no banco (snake_case).
 // Central pra qualquer lugar que precise converter entre os dois (linha 1 de verdade).
 export const BADGE_DB_FIELDS = {
@@ -124,11 +149,11 @@ export const supabaseAdapter = {
     return rows.map(rowToJob);
   },
   async insertJob(job) {
-    const rows = await supabaseRequest("vagas", { method: "POST", body: JSON.stringify(jobToRow(job)) });
+    const rows = await dbWrite("vagas", "insert", { rows: jobToRow(job) });
     return rowToJob(rows[0]);
   },
   async insertJobsBulk(jobsArr) {
-    const rows = await supabaseRequest("vagas", { method: "POST", body: JSON.stringify(jobsArr.map(jobToRow)) });
+    const rows = await dbWrite("vagas", "insert", { rows: jobsArr.map(jobToRow) });
     return rows.map(rowToJob);
   },
   async updateJob(id, patch) {
@@ -170,10 +195,25 @@ export const supabaseAdapter = {
     for (const [jsKey, dbKey] of Object.entries(BADGE_DB_FIELDS)) {
       if (jsKey in patch) dbPatch[dbKey] = patch[jsKey];
     }
-    await supabaseRequest(`vagas?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(dbPatch), prefer: "return=minimal" });
+    await dbWrite("vagas", "update", { rows: dbPatch, match: { id } });
   },
   async deleteJob(id) {
-    await supabaseRequest(`vagas?id=eq.${id}`, { method: "DELETE", prefer: "return=minimal" });
+    await dbWrite("vagas", "delete", { match: { id } });
+  },
+  // Caminho PÚBLICO, sem login — usado só pros 3 contadores que
+  // qualquer visitante anônimo incrementa (clique no WhatsApp,
+  // visualização de card, favoritar). Nunca passa pelo gateway
+  // (exigiria estar logado, e ninguém que só está candidatando
+  // precisa estar). O banco (schema.sql v24) restringe por GRANT de
+  // coluna quais campos a anon key pode mesmo tocar em "vagas" — só
+  // esses 4, nunca conteúdo da vaga. Ver comentário lá.
+  async incrementJobStat(id, patch) {
+    const dbPatch = {};
+    if ("clicks" in patch) dbPatch.clicks = patch.clicks;
+    if ("views" in patch) dbPatch.views = patch.views;
+    if ("favoritos" in patch) dbPatch.favoritos = patch.favoritos;
+    if ("dailyStats" in patch) dbPatch.daily_stats = patch.dailyStats;
+    await supabaseRequest(`vagas?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(dbPatch), prefer: "return=minimal" });
   },
   async incrementClicks(id) {
     await supabaseRequest("rpc/increment_vaga_clicks", { method: "POST", body: JSON.stringify({ vaga_id: id }), prefer: "return=minimal" });
@@ -184,10 +224,9 @@ export const supabaseAdapter = {
     return { mode: rows[0].mode, text: rows[0].text || "", imageUrl: rows[0].image_url || null };
   },
   async upsertBanner(banner) {
-    await supabaseRequest("banner?id=eq.1", {
-      method: "PATCH",
-      body: JSON.stringify({ mode: banner.mode, text: banner.text, image_url: banner.imageUrl }),
-      prefer: "return=minimal",
+    await dbWrite("banner", "update", {
+      rows: { mode: banner.mode, text: banner.text, image_url: banner.imageUrl },
+      match: { id: 1 },
     });
   },
   // Usa a tabela `comunidade_banner` (singleton igual à `banner`) do
@@ -198,10 +237,9 @@ export const supabaseAdapter = {
     return { mode: rows[0].mode, text: rows[0].text || "", imageUrl: rows[0].image_url || null, enabled: rows[0].enabled !== false };
   },
   async upsertCommunityBanner(banner) {
-    await supabaseRequest("comunidade_banner?id=eq.1", {
-      method: "PATCH",
-      body: JSON.stringify({ mode: banner.mode, text: banner.text, image_url: banner.imageUrl, enabled: banner.enabled !== false }),
-      prefer: "return=minimal",
+    await dbWrite("comunidade_banner", "update", {
+      rows: { mode: banner.mode, text: banner.text, image_url: banner.imageUrl, enabled: banner.enabled !== false },
+      match: { id: 1 },
     });
   },
   // Usa a tabela `alerta_banner` (singleton igual à `banner`) do supabase-schema.sql (v8).
@@ -211,13 +249,11 @@ export const supabaseAdapter = {
     return { text: rows[0].text || "", enabled: !!rows[0].enabled };
   },
   async upsertAlertBanner(config) {
-    await supabaseRequest("alerta_banner?id=eq.1", {
-      method: "PATCH",
-      body: JSON.stringify({ text: config.text, enabled: config.enabled }),
-      prefer: "return=minimal",
-    });
+    await dbWrite("alerta_banner", "update", { rows: { text: config.text, enabled: config.enabled }, match: { id: 1 } });
   },
-  // Usa a tabela `alertas_vagas` do supabase-schema.sql (v8).
+  // Usa a tabela `alertas_vagas` do supabase-schema.sql (v8). Inserção
+  // continua PÚBLICA de propósito — é o candidato se inscrevendo pra
+  // receber alerta, ninguém loga pra isso.
   async fetchAlertSubscriptions() {
     const rows = await supabaseRequest("alertas_vagas?select=*&order=created_at.desc");
     return (rows || []).map((r) => ({
@@ -235,7 +271,8 @@ export const supabaseAdapter = {
   },
   // Usa a tabela `site_stats` do supabase-schema.sql (v14) — singleton
   // (id=1) com uma única coluna jsonb guardando todo o objeto de
-  // estatísticas, mesmo padrão simplificado de "banner"/"alerta_banner".
+  // estatísticas. Fica FORA do gateway de propósito: é só contador de
+  // visita (sem dado sensível), continua na política pública antiga.
   async fetchSiteStats() {
     const rows = await supabaseRequest("site_stats?select=*&id=eq.1");
     return rows?.[0]?.data || null;
@@ -256,15 +293,14 @@ export const supabaseAdapter = {
     }));
   },
   async insertCommunityContent(item) {
-    const rows = await supabaseRequest("comunidade_conteudo", {
-      method: "POST",
-      body: JSON.stringify({ categoria: item.categoria, titulo: item.titulo, descricao: item.descricao, youtube_id: item.youtubeId }),
+    const rows = await dbWrite("comunidade_conteudo", "insert", {
+      rows: { categoria: item.categoria, titulo: item.titulo, descricao: item.descricao, youtube_id: item.youtubeId },
     });
     const r = rows[0];
     return { id: r.id, categoria: r.categoria, titulo: r.titulo, descricao: r.descricao, youtubeId: r.youtube_id, createdAt: new Date(r.created_at).getTime() };
   },
   async deleteCommunityContent(id) {
-    await supabaseRequest(`comunidade_conteudo?id=eq.${id}`, { method: "DELETE", prefer: "return=minimal" });
+    await dbWrite("comunidade_conteudo", "delete", { match: { id } });
   },
   // Usa as tabelas `service_categories`, `service_listings` do
   // supabase-schema.sql (v16).
@@ -275,12 +311,10 @@ export const supabaseAdapter = {
   async upsertServiceCategories(categories) {
     // "Substitui tudo" — mais simples e seguro do que tentar diffar (a
     // lista de categorias costuma ser pequena e mudar raramente).
-    await supabaseRequest("service_categories", { method: "DELETE", prefer: "return=minimal" }).catch(() => {});
+    await dbWrite("service_categories", "delete", {}).catch(() => {});
     if (categories.length) {
-      await supabaseRequest("service_categories", {
-        method: "POST",
-        body: JSON.stringify(categories.map((c) => ({ nome: c.nome, color: c.color, icon: c.icon }))),
-        prefer: "return=minimal",
+      await dbWrite("service_categories", "insert", {
+        rows: categories.map((c) => ({ nome: c.nome, color: c.color, icon: c.icon })),
       });
     }
   },
@@ -293,12 +327,11 @@ export const supabaseAdapter = {
     }));
   },
   async insertServiceListing(item) {
-    const rows = await supabaseRequest("service_listings", {
-      method: "POST",
-      body: JSON.stringify({
+    const rows = await dbWrite("service_listings", "insert", {
+      rows: {
         provider_id: item.providerId, categoria: item.categoria, nome: item.nome,
         descricao: item.descricao, whatsapp: item.whatsapp, likes: item.likes || 0, status: item.status || "publicado",
-      }),
+      },
     });
     const r = rows[0];
     return { id: r.id, providerId: r.provider_id, categoria: r.categoria, nome: r.nome, descricao: r.descricao, whatsapp: r.whatsapp, likes: r.likes ?? 0, status: r.status, createdAt: new Date(r.created_at).getTime() };
@@ -311,10 +344,10 @@ export const supabaseAdapter = {
     if ("whatsapp" in patch) dbPatch.whatsapp = patch.whatsapp;
     if ("likes" in patch) dbPatch.likes = patch.likes;
     if ("status" in patch) dbPatch.status = patch.status;
-    await supabaseRequest(`service_listings?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(dbPatch), prefer: "return=minimal" });
+    await dbWrite("service_listings", "update", { rows: dbPatch, match: { id } });
   },
   async deleteServiceListing(id) {
-    await supabaseRequest(`service_listings?id=eq.${id}`, { method: "DELETE", prefer: "return=minimal" });
+    await dbWrite("service_listings", "delete", { match: { id } });
   },
   // Usa a tabela `planos` do supabase-schema.sql (v11).
   async fetchPlanos() {
@@ -351,23 +384,24 @@ export const supabaseAdapter = {
       selo_verificado: p.seloVerificado,
       metricas: !!p.metricas,
     }));
-    await supabaseRequest("planos", {
-      method: "POST",
-      body: JSON.stringify(rows),
-      prefer: "resolution=merge-duplicates,return=minimal",
-    });
+    await dbWrite("planos", "upsert", { rows });
   },
-  // Usa a tabela `parceiros` do supabase-schema.sql (v5) — ainda não
-  // existe até você rodar o SQL atualizado.
+  // Usa a tabela `parceiros` do supabase-schema.sql (v5).
+  // ⚠️ NUNCA pede "password" aqui — select explícito sem essa coluna,
+  // de propósito (ver schema.sql v24: a coluna foi revogada da anon
+  // key no banco, então pedir "select=*" quebraria a consulta
+  // inteira). Login de parceiro agora é 100% verificado no servidor
+  // (api/partner-login.js), nunca mais comparado aqui no navegador.
   async fetchPartners() {
-    const rows = await supabaseRequest("parceiros?select=*");
+    const rows = await supabaseRequest(
+      "parceiros?select=id,tipo,name,email,phone_pt,phone_jp,plan_key,selo_verificado"
+    );
     if (!rows?.length) return null;
     return rows.map((r) => ({
       id: r.id,
       tipo: r.tipo,
       name: r.name,
       email: r.email,
-      password: r.password, // ⚠️ texto puro — troque por Supabase Auth antes de ir pra produção de verdade
       phonePt: r.phone_pt || "",
       phoneJp: r.phone_jp || "",
       planKey: r.plan_key,
@@ -386,17 +420,13 @@ export const supabaseAdapter = {
       plan_key: p.planKey,
       selo_verificado: p.seloVerificado,
     }));
-    await supabaseRequest("parceiros", {
-      method: "POST",
-      body: JSON.stringify(rows),
-      prefer: "resolution=merge-duplicates,return=minimal",
-    });
+    await dbWrite("parceiros", "upsert", { rows });
   },
   // upsertPartners (acima) NUNCA apaga linha nenhuma — é um upsert puro
   // (insere/atualiza por ID). Excluir um parceiro de verdade do banco
   // precisa desse DELETE explícito.
   async deletePartner(id) {
-    await supabaseRequest(`parceiros?id=eq.${id}`, { method: "DELETE", prefer: "return=minimal" });
+    await dbWrite("parceiros", "delete", { match: { id } });
   },
   // Usa a tabela `indicacoes_config` (singleton igual à `banner`) do
   // supabase-schema.sql (v22) — texto do hero + regra de idade da aba Indicações.
@@ -413,16 +443,15 @@ export const supabaseAdapter = {
     };
   },
   async upsertIndicacoesConfig(config) {
-    await supabaseRequest("indicacoes_config?id=eq.1", {
-      method: "PATCH",
-      body: JSON.stringify({
+    await dbWrite("indicacoes_config", "update", {
+      rows: {
         eyebrow: config.eyebrow,
         titulo: config.titulo,
         subtitulo: config.subtitulo,
         idade_minima: config.idadeMinima,
         whatsapp_indicar: config.whatsappIndicar,
-      }),
-      prefer: "return=minimal",
+      },
+      match: { id: 1 },
     });
   },
 };
@@ -437,6 +466,7 @@ export async function fetchJobsFromDB() { return supabaseAdapter.fetchJobs(); }
 export async function insertJobToDB(job) { return supabaseAdapter.insertJob(job); }
 export async function insertJobsBulkToDB(jobsArr) { return supabaseAdapter.insertJobsBulk(jobsArr); }
 export async function updateJobInDB(id, patch) { return supabaseAdapter.updateJob(id, patch); }
+export async function incrementJobStatInDB(id, patch) { return supabaseAdapter.incrementJobStat(id, patch); }
 export async function deleteJobFromDB(id) { return supabaseAdapter.deleteJob(id); }
 export async function incrementClicksInDB(id) { return supabaseAdapter.incrementClicks(id); }
 export async function fetchBannerFromDB() { return supabaseAdapter.fetchBanner(); }
