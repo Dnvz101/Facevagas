@@ -602,6 +602,12 @@ export default function App() {
   // fica sempre acima dos outros só por ter marcado o selo primeiro.
   // Recarregar a página sorteia uma ordem nova.
   const destaqueWeightsRef = useRef(new Map());
+  // Mesma ideia do sorteio de Destaque acima, mas pro resto das vagas
+  // (com ou sem outros selos tipo Urgente/Recomendado — só Destaque
+  // continua garantindo o topo). Sem isso, a maioria das vagas empata
+  // em 0 cliques e o sort estável do JS mantém a ordem de chegada do
+  // JSON — ou seja, na prática, sempre as mesmas vagas por cima.
+  const outrasWeightsRef = useRef(new Map());
 
   const sortedJobs = useMemo(
     () =>
@@ -617,8 +623,15 @@ export default function App() {
             if (!destaqueWeightsRef.current.has(b.id)) destaqueWeightsRef.current.set(b.id, Math.random());
             return destaqueWeightsRef.current.get(a.id) - destaqueWeightsRef.current.get(b.id);
           }
-          // Fora do Destaque, mantém a ordenação por cliques de sempre.
-          return b.clicks - a.clicks;
+          // Fora do Destaque, distribui as vagas aleatoriamente (sorteado
+          // uma vez por vaga, igual o Destaque acima) — antes caía pra
+          // "mais cliques primeiro", mas com a maioria empatada em 0
+          // cliques, isso na prática virava "ordem de chegada do JSON",
+          // sempre as mesmas vagas por cima. Cliques continuam contando
+          // pras Estatísticas de Uso — só pararam de decidir a posição.
+          if (!outrasWeightsRef.current.has(a.id)) outrasWeightsRef.current.set(a.id, Math.random());
+          if (!outrasWeightsRef.current.has(b.id)) outrasWeightsRef.current.set(b.id, Math.random());
+          return outrasWeightsRef.current.get(a.id) - outrasWeightsRef.current.get(b.id);
         }),
     [jobs]
   );

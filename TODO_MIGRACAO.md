@@ -474,3 +474,20 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   `SiteFooter` confirmando que a div do canvas e os links legais
   continuam presentes juntos.
 
+## 🎲 v2.6.7 — Vagas sem Destaque agora aparecem em ordem aleatória
+- [x] A pedido: antes, fora do grupo "Destaque" (que já tinha sorteio
+      justo entre anunciantes), o resto das vagas era ordenado por
+      cliques — mas com a maioria empatada em 0 cliques, o sort
+      estável do JS mantinha a ordem de chegada do JSON na prática,
+      então sempre as mesmas vagas apareciam por cima.
+- [x] `sortedJobs` (App.jsx) agora sorteia um peso aleatório por vaga
+      (mesmo esquema já usado pro Destaque) pra esse grupo também —
+      Destaque continua sempre no topo, mas o resto passa a se
+      distribuir aleatoriamente em vez de fixo por clique/chegada.
+      Cliques continuam contando normalmente pras Estatísticas de Uso
+      — só pararam de decidir a posição na lista.
+- Testado: simulei 20 embaralhamentos — confirmado que Destaque sempre
+  fica primeiro, a ordem é estável entre re-renders (não fica
+  reembaralhando a cada clique), e uma vaga com 100 cliques não fica
+  mais garantida no topo do grupo "outras". Build limpo.
+
