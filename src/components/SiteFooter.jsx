@@ -6,11 +6,13 @@
 
 import { MapPin, Mail, Phone } from "lucide-react";
 import { toWhatsAppLink, toTelLink, ADMIN_WHATSAPP_RAW } from "../utils/format.js";
+import FooterParticles from "./FooterParticles.jsx";
 
 export default function SiteFooter({ onOpenLegal }) {
   return (
-    <footer className="mx-auto max-w-3xl px-5 py-8">
-      <div className="border-t border-slate-100 pt-6">
+    <footer className="relative mx-auto max-w-3xl overflow-hidden px-5 py-8">
+      <FooterParticles />
+      <div className="relative border-t border-slate-100 pt-6">
         <div className="nv-display mb-3 flex items-baseline text-[16px] font-extrabold tracking-tight">
           <span className="text-slate-900">nihon</span>
           <span className="text-blue-600">vagas</span>

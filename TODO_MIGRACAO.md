@@ -454,3 +454,23 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   conta "depois" caiu pra ¥1.481, condizente com os cards. Build
   limpo.
 
+## ✨ v2.6.5 — Partículas discretas no rodapé
+- [x] Adaptado de um componente do 21st.dev (feito originalmente pra
+      Next.js/shadcn, tela cheia, 140 partículas com interação de
+      hover) pra uma versão bem mais sutil: só 25 partículas, devagar,
+      baixa opacidade, sem nenhuma interação — decoração de fundo, não
+      protagonista da tela. Presa só à altura do rodapé (`position:
+      relative` + `overflow:hidden`), nunca vaza por cima do resto do
+      site.
+- [x] Sem lógica própria de detecção de tema escuro — o site inteiro
+      já resolve isso com UM filtro CSS (`nv-dark-invert`); o canvas
+      das partículas segue essa mesma regra em vez de reimplementar
+      detecção de tema com MutationObserver (como o componente
+      original fazia, pensado pro next-themes).
+      `pointer-events:none` garante que nunca atrapalha o clique nos
+      links reais do rodapé (Termos, WhatsApp, etc.), mesmo estando
+      por baixo deles visualmente.
+- Testado: build limpo + render real (`react-dom/server`) do
+  `SiteFooter` confirmando que a div do canvas e os links legais
+  continuam presentes juntos.
+
