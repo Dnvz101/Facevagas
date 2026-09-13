@@ -97,11 +97,15 @@ export default function RankingsTab({ jobs, onGoToJob }) {
   const metaLabel = (j) => [j.empresa, localLabel(j)].filter(Boolean).join(" · ");
 
   // Rankings de salário só fazem sentido comparando valores do MESMO
-  // tipo (hora ou diária) — um salário mensal (ex: ¥450.000, comum em
-  // vaga de escritório) bagunçava tudo, aparecendo como "o maior
-  // salário" ou disparando a média de um estado pra cima sem ter
-  // relação nenhuma com o que as outras vagas pagam por hora/dia.
-  const isComparableSalary = (j) => salaryUnitLabel(salarioTopo(j)) !== "mês";
+  // tipo — um salário mensal (ex: ¥450.000, comum em vaga de
+  // escritório) OU diário (ex: ¥35.000/dia) bagunçava tudo: aparecia
+  // como "o maior salário" ou disparava a média de um estado pra cima
+  // sem ter relação nenhuma com o que as outras vagas pagam por hora.
+  // Achado ao vivo: a checagem só excluía "mês", deixando "dia" entrar
+  // junto com "hora" na mesma soma/média — um único ¥35.000/dia
+  // sozinho já empurrava a média do estado inteiro pra cima. Agora só
+  // "hora" (o padrão do site) entra em qualquer ranking de salário.
+  const isComparableSalary = (j) => salaryUnitLabel(salarioTopo(j)) === "h";
 
   const topZeroNihongo = useMemo(() => {
     return [...jobsFiltrados]

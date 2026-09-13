@@ -435,3 +435,22 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   propósito — a duplicata foi removida e o aviso certo apareceu no
   console. Build limpo.
 
+## 🐛 v2.6.4 — Média salarial (e Top Salários) misturava hora com diária
+- [x] Achado com print real: "Média salarial por estado" mostrava
+      Aichi em ¥2.162, bem acima do que os cards realmente pagam
+      (maioria ¥1.300-1.700/h). Causa: já existia proteção contra
+      salário MENSAL contaminar os rankings, mas nunca contra DIÁRIO —
+      um único "¥35.000/dia" (Fujiarte, Kanrisha) entrava na mesma
+      soma que dezenas de vagas por hora, empurrando a média inteira
+      do estado pra cima sozinho.
+- [x] `isComparableSalary` (RankingsTab.jsx) agora só aceita "hora" —
+      antes só excluía "mês", deixando "dia" passar junto. Afeta TODOS
+      os rankings de salário de uma vez (Top Salários, Top Zero
+      Nihongo, Top Moradia, Top Mukae, Top Homens/Mulheres, Média por
+      Província), já que todos compartilhavam essa mesma checagem.
+- Testado: reproduzi os valores aproximados dos 4 prints de vagas de
+  Aichi que você mandou + o registro de ¥35.000/dia — a conta "antes"
+  bateu em ¥2.279 (bem perto do ¥2.162 real, confirmando a causa); a
+  conta "depois" caiu pra ¥1.481, condizente com os cards. Build
+  limpo.
+
