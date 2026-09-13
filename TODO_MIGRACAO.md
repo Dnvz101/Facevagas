@@ -364,3 +364,38 @@ sem nunca ter logado.
    nessa ordem, porque essa mudança toca o coração de como tudo se
    autentica.
 
+## 🐛 v2.6.1 — Dois bugs achados testando o v2.6.0 ao vivo
+
+**1) Cliques/visualizações pararam de ser salvos.** Ao fechar a
+escrita pública em `vagas`, o SQL do v24 removeu a política de UPDATE
+(`vagas_public_update`) mas não recriou ela — só fez a parte de
+"liberar 4 colunas" (GRANT), sem a parte de "liberar a linha" (RLS).
+As duas são checadas JUNTAS: sem política de linha, nem as 4 colunas
+liberadas gravavam nada. Resultado: todo clique/visualização de
+visitante anônimo, entre publicar o v24 e essa correção, foi
+silenciosamente recusado pelo banco e perdido (não tem como
+recuperar). Corrigido recriando a política (`using (true)`, seguro
+porque o GRANT de coluna já limita o que essa política permite tocar).
+
+**2) "Impacto dos Selos" mostrando números absurdos (279.7x).** Bug
+separado, não relacionado à segurança — já existia antes do v2.6.0,
+só ficou visível agora porque a perda de cliques acima desbalanceou
+ainda mais os dados. `computeImpactMultiplier` (utils/stats.js) só se
+protegia contra dividir por EXATAMENTE zero — um grupo de comparação
+com poucas visualizações (ex: 3 views, 1 clique = 33%) gera uma taxa
+minúscula mas não-zero, e dividir por isso explode pra um número sem
+sentido. Corrigido exigindo uma amostra mínima (20 visualizações) dos
+dois lados antes de calcular qualquer proporção — abaixo disso, mostra
+"Ainda sem dados suficientes" em vez de inventar um multiplicador.
+- Testado: simulei o cenário exato do bug (grupo pequeno) → agora
+  retorna null certo; cenário saudável com amostra boa → continua
+  dando o número certo (4.0x); grupo com 0 views → null. Build limpo.
+
+### Ação: rodar esse SQL isolado no Supabase (já está incluído no v24
+atualizado, mas se você já rodou o v24 antes, só precisa desse trecho):
+```sql
+create policy "vagas_public_update" on public.vagas for update using (true);
+revoke update on public.vagas from anon;
+grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
+```
+

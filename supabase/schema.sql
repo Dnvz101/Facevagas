@@ -539,6 +539,13 @@ drop policy if exists "vagas_public_delete" on public.vagas;
 -- Só as 4 colunas de contador continuam graváveis por qualquer
 -- visitante (sem login) — o resto (conteúdo, selos, status) só pelo
 -- gateway com sessão.
+-- ⚠️ GRANT de coluna e política de LINHA são checados JUNTOS — sem
+-- uma política de UPDATE permitindo a linha, o GRANT de coluna sozinho
+-- não libera nada (achado depois de publicar: os cliques/visualizações
+-- pararam de ser salvos porque essa política tinha sido removida sem
+-- recriar). "using (true)" aqui é seguro porque o GRANT abaixo já
+-- restringe PRA QUAIS COLUNAS isso vale.
+create policy "vagas_public_update" on public.vagas for update using (true);
 revoke update on public.vagas from anon;
 grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
 
