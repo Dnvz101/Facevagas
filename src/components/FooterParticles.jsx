@@ -43,12 +43,12 @@ export default function FooterParticles() {
       if (cancelled || !window.particlesJS) return;
       window.particlesJS(domId, {
         particles: {
-          number: { value: 25, density: { enable: true, value_area: 900 } },
-          color: { value: "#60a5fa" },
+          number: { value: 30, density: { enable: true, value_area: 900 } },
+          color: { value: "#3b82f6" },
           shape: { type: "circle" },
-          opacity: { value: 0.28, random: true },
-          size: { value: 2.2, random: true },
-          line_linked: { enable: true, distance: 140, color: "#93c5fd", opacity: 0.15, width: 1 },
+          opacity: { value: 0.45, random: true },
+          size: { value: 2.6, random: true },
+          line_linked: { enable: true, distance: 140, color: "#3b82f6", opacity: 0.25, width: 1 },
           move: { enable: true, speed: 0.6, random: true, out_mode: "out" },
         },
         // Sem interatividade de propósito — decoração de fundo, não
