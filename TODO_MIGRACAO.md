@@ -648,3 +648,23 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   ¥4.125 no cenário de teste) — prova que a pausa é mesmo ignorada
   quando "Sim" está marcado, não só escondida da tela. Build limpo.
 
+## 📍 v2.6.14 — Editor de pausas movido pra perto do Sim/Não "Turno de 8h"
+- [x] A pedido: o editor de pausas ficava numa seção separada
+      ("Turnos Nikoutai"), longe do Sim/Não "Turno de 8h" (que fica em
+      "⚙️ Dados Contratuais") — quem marcava "Não" tinha que rolar a
+      tela até uma seção diferente pra achar os campos que acabaram
+      de ficar relevantes.
+- [x] Movido: o editor de pausas (e o aviso de comparação do v2.6.12)
+      agora abre direto abaixo do próprio Sim/Não, na mesma seção —
+      tanto no perfil completo (`ProfileEditor.jsx`, Hiru e Yakin)
+      quanto na aba pública (`SalaryCalculator.jsx`, Yakin).
+- [x] "Turnos Nikoutai" continua só com os horários de início/fim de
+      cada turno (isso sim faz sentido ficar junto do resto da
+      identidade do turno) + uma nota curta apontando pra onde foram
+      as pausas, pra quem chegar primeiro nessa seção não ficar
+      perdido.
+- Testado: render real confirmando a nova ordem (Dados Contratuais →
+  toggle → pausas, tudo antes de chegar em Turnos Nikoutai) nos dois
+  componentes, e que a seção de Turnos Nikoutai não tem mais o editor
+  de pausas duplicado. Build limpo.
+

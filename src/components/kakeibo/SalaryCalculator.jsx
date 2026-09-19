@@ -146,6 +146,34 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
             </button>
           </div>
         </div>
+        {/* Editor de pausas abre bem aqui, logo abaixo do Sim/Não —
+            antes ficava lá embaixo, na seção "🔧 Avançado", longe de
+            onde a decisão é tomada. */}
+        {nikoutai && !yakinTurno8h && (
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            <p className="nv-body mb-1.5 text-[10px] text-slate-400">Pausas do turno (copia do seu contrato — deixe em branco a que não usar):</p>
+            {breaksEditor(yakinPauses, setYakinPauses)}
+            <p className="nv-body mt-1 text-[10px] text-slate-400">
+              Só a parte de cada pausa que cai DENTRO do 22h~5h é descontada do adicional noturno.
+            </p>
+            {/* Referência (não trava "Horas padrão/dia") — compara com
+                span do turno menos as pausas, só pra ajudar a pegar erro
+                de digitação. Não força nada: empresa diferente paga
+                diferente (algumas bancam a pausa e pagam as horas
+                cheias). */}
+            {(() => {
+              const yakinCalc = calculateShiftNetHours(yakinStart, yakinEnd, yakinPauses);
+              const yakinDigitado = Number(standardHoursYakin) || 0;
+              const divergente = Math.abs(yakinCalc - yakinDigitado) > 0.1;
+              return (
+                <p className={`mt-2 text-[10.5px] ${divergente ? "font-medium text-amber-600" : "text-slate-400"}`}>
+                  {divergente ? "⚠️ " : ""}Entrada−saída menos pausas dá {yakinCalc.toFixed(2)}h ("Horas padrão/dia (noturno)" está em {yakinDigitado.toFixed(2)}h)
+                  {divergente ? " — confira se é erro de digitação ou se a empresa paga diferente do líquido mesmo" : ""}.
+                </p>
+              );
+            })()}
+          </div>
+        )}
         {age >= 40 && age <= 64 && (
           <p className="nv-body mt-2 text-[10.5px] text-slate-400">Kaigo Hoken de 0,91% incluso automaticamente (idade entre 40~64 anos).</p>
         )}
@@ -184,41 +212,15 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
           Trabalha em regime de turnos (nikoutai/yakin)
         </label>
         {nikoutai && (
-          <div className="mb-3">
-            <div className="mb-3 grid grid-cols-2 gap-3">
-              {timeField("Início do turno noturno", yakinStart, setYakinStart)}
-              {timeField("Fim do turno noturno", yakinEnd, setYakinEnd)}
-            </div>
-            <p className="nv-body mb-1.5 text-[10px] text-slate-400">Pausas do turno (copia do seu contrato — deixe em branco a que não usar):</p>
-            {yakinTurno8h ? (
-              <p className="nv-body text-[10.5px] text-slate-400">
-                Turno de 8h marcado como "empresa paga cheio" (acima) — pausa não afeta nada, escondida de propósito.
-              </p>
-            ) : (
-              <>
-                {breaksEditor(yakinPauses, setYakinPauses)}
-                <p className="nv-body mt-1 text-[10px] text-slate-400">
-                  Só a parte de cada pausa que cai DENTRO do 22h~5h é descontada do adicional noturno.
-                </p>
-                {/* Referência (não trava "Horas padrão/dia") — compara com
-                    span do turno menos as pausas, só pra ajudar a pegar erro
-                    de digitação. Não força nada: empresa diferente paga
-                    diferente (algumas bancam a pausa e pagam as horas
-                    cheias). */}
-                {(() => {
-                  const yakinCalc = calculateShiftNetHours(yakinStart, yakinEnd, yakinPauses);
-                  const yakinDigitado = Number(standardHoursYakin) || 0;
-                  const divergente = Math.abs(yakinCalc - yakinDigitado) > 0.1;
-                  return (
-                    <p className={`mt-2 text-[10.5px] ${divergente ? "font-medium text-amber-600" : "text-slate-400"}`}>
-                      {divergente ? "⚠️ " : ""}Entrada−saída menos pausas dá {yakinCalc.toFixed(2)}h ("Horas padrão/dia (noturno)" está em {yakinDigitado.toFixed(2)}h)
-                      {divergente ? " — confira se é erro de digitação ou se a empresa paga diferente do líquido mesmo" : ""}.
-                    </p>
-                  );
-                })()}
-              </>
-            )}
+          <div className="mb-3 grid grid-cols-2 gap-3">
+            {timeField("Início do turno noturno", yakinStart, setYakinStart)}
+            {timeField("Fim do turno noturno", yakinEnd, setYakinEnd)}
           </div>
+        )}
+        {nikoutai && (
+          <p className="nv-body mb-3 text-[10px] leading-relaxed text-slate-400">
+            Pausas do turno: lá em cima, em "⚙️ Dados Contratuais", logo abaixo do Sim/Não "Turno de 8h".
+          </p>
         )}
         <div className="grid grid-cols-2 gap-3">
           {numField("Deslocamento (km/dia)", kmPerDay, setKmPerDay)}

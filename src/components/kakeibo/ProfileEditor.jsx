@@ -97,6 +97,22 @@ export default function ProfileEditor({ profile, onChange }) {
           </div>
         </div>
 
+        {/* Editor de pausas abre bem aqui, logo abaixo do Sim/Não —
+            antes ficava lá embaixo, na seção "Turnos Nikoutai", longe
+            de onde a decisão é tomada. */}
+        {!profile.hirukinTurno8h && (
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            <p className="nv-body mb-1.5 text-[10px] text-slate-400">Pausas do Hirukin (deixe em branco a que não usar):</p>
+            {breaksEditor(profile.hirukinBreaks, set("hirukinBreaks"))}
+          </div>
+        )}
+        {!profile.yakinTurno8h && (
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            <p className="nv-body mb-1.5 text-[10px] text-slate-400">Pausas do Yakin (deixe em branco a que não usar):</p>
+            {breaksEditor(profile.yakinBreaks, set("yakinBreaks"))}
+          </div>
+        )}
+
         {/* Referência (não trava nada) — compara o número digitado com
             span do turno menos as pausas, só pra ajudar a pegar erro de
             digitação. Não aparece pro turno marcado como "8h cheio" —
@@ -275,41 +291,19 @@ export default function ProfileEditor({ profile, onChange }) {
         {profile.nikoutai && (
           <>
             <p className="nv-body mb-1.5 text-[10.5px] font-semibold text-slate-500">☀️ Hirukin (turno diurno/asaban)</p>
-            <div className="mb-2 grid grid-cols-2 gap-3">
+            <div className="mb-4 grid grid-cols-2 gap-3">
               {timeFieldKakeibo("Início Hirukin", profile.hirukinStart, set("hirukinStart"))}
               {timeFieldKakeibo("Fim Hirukin", profile.hirukinEnd, set("hirukinEnd"))}
             </div>
-            {profile.hirukinTurno8h ? (
-              <p className="nv-body mb-4 text-[10.5px] text-slate-400">
-                Turno de 8h marcado como "empresa paga cheio" (em Dados Contratuais) — pausa não afeta nada, escondida de propósito.
-              </p>
-            ) : (
-              <>
-                <p className="nv-body mb-1.5 text-[10px] text-slate-400">Pausas do Hirukin (deixe em branco a que não usar):</p>
-                <div className="mb-4">
-                  {breaksEditor(profile.hirukinBreaks, set("hirukinBreaks"))}
-                </div>
-              </>
-            )}
 
             <p className="nv-body mb-1.5 text-[10.5px] font-semibold text-slate-500">🌙 Yakin (turno noturno/osoban)</p>
-            <div className="mb-2 grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {timeFieldKakeibo("Início Yakin", profile.yakinStart, set("yakinStart"))}
               {timeFieldKakeibo("Fim Yakin", profile.yakinEnd, set("yakinEnd"))}
             </div>
-            {profile.yakinTurno8h ? (
-              <p className="nv-body text-[10.5px] text-slate-400">
-                Turno de 8h marcado como "empresa paga cheio" (em Dados Contratuais) — pausa não afeta nada, escondida de propósito.
-              </p>
-            ) : (
-              <>
-                <p className="nv-body mb-1.5 text-[10px] text-slate-400">Pausas do Yakin (deixe em branco a que não usar):</p>
-                {breaksEditor(profile.yakinBreaks, set("yakinBreaks"))}
-              </>
-            )}
             <p className="nv-body mt-2 text-[10px] leading-relaxed text-slate-400">
-              Copia direto do seu contrato/quadro de horários — só a parte de cada pausa que cai DENTRO do 22h~5h é
-              descontada do adicional noturno; o resto não muda nada.
+              Pausas de cada turno: lá em cima, em "⚙️ Dados Contratuais", logo abaixo do Sim/Não "Turno de 8h". Só a
+              parte de cada pausa que cai DENTRO do 22h~5h é descontada do adicional noturno; o resto não muda nada.
             </p>
 
             <div className="mt-2.5 space-y-0.5 text-[10.5px] text-slate-400">
