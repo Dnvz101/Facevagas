@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------
 
 import { useMemo } from "react";
-import { computeProfilePayslip, yenLabel, ZANGYO_MODES, calculateNightHours } from "../../utils/kakeibo.js";
+import { computeProfilePayslip, yenLabel, ZANGYO_MODES, calculateNightHours, calculateShiftNetHours } from "../../utils/kakeibo.js";
 import { formatYen } from "../../utils/format.js";
 import { fieldSuffix, timeFieldKakeibo, breaksEditor } from "./fields.jsx";
 
@@ -42,6 +42,34 @@ export default function ProfileEditor({ profile, onChange }) {
           {fieldSuffix("Horas padrão/dia (Yakin)", profile.standardHoursYakin ?? profile.standardHours, set("standardHoursYakin"), "h", 0.25)}
           {fieldSuffix("Adicional (Teate)/hora", profile.teatePerHour, set("teatePerHour"), "¥", 10)}
         </div>
+        {/* Referência (não trava nada) — compara o número digitado com
+            span do turno menos as pausas, só pra ajudar a pegar erro de
+            digitação. Não força nada porque empresa diferente paga
+            diferente (algumas bancam a pausa e pagam as 8h cheias). */}
+        {profile.nikoutai && (
+          <div className="mt-2.5 space-y-1 border-t border-slate-100 pt-2.5 text-[10.5px]">
+            {(() => {
+              const hiruCalc = calculateShiftNetHours(profile.hirukinStart, profile.hirukinEnd, profile.hirukinBreaks);
+              const hiruDigitado = Number(profile.standardHoursHiru ?? profile.standardHours) || 0;
+              const hiruDivergente = Math.abs(hiruCalc - hiruDigitado) > 0.1;
+              const yakinCalc = calculateShiftNetHours(profile.yakinStart, profile.yakinEnd, profile.yakinBreaks);
+              const yakinDigitado = Number(profile.standardHoursYakin ?? profile.standardHours) || 0;
+              const yakinDivergente = Math.abs(yakinCalc - yakinDigitado) > 0.1;
+              return (
+                <>
+                  <p className={hiruDivergente ? "font-medium text-amber-600" : "text-slate-400"}>
+                    {hiruDivergente ? "⚠️ " : ""}Hiru: entrada−saída menos pausas dá {hiruCalc.toFixed(2)}h (você digitou {hiruDigitado.toFixed(2)}h)
+                    {hiruDivergente ? " — confira se é erro de digitação ou se a empresa paga diferente do líquido mesmo" : ""}.
+                  </p>
+                  <p className={yakinDivergente ? "font-medium text-amber-600" : "text-slate-400"}>
+                    {yakinDivergente ? "⚠️ " : ""}Yakin: entrada−saída menos pausas dá {yakinCalc.toFixed(2)}h (você digitou {yakinDigitado.toFixed(2)}h)
+                    {yakinDivergente ? " — confira se é erro de digitação ou se a empresa paga diferente do líquido mesmo" : ""}.
+                  </p>
+                </>
+              );
+            })()}
+          </div>
+        )}
       </div>
 
       {/* Bônus condicional (assiduidade/pontualidade) — pergunta primeiro

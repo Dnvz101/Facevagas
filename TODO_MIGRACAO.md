@@ -571,6 +571,37 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   parcialmente preenchida (só uma das 3, resto ignorado sem erro).
   Render real dos dois componentes + build limpo.
 
+## 🔍 v2.6.12 — Dica de conferência nas "Horas padrão/dia" (achou erro de digitação real)
+- [x] A pedido: como "Horas padrão/dia" continua sendo digitado à mão
+      de propósito (empresa que banca a pausa e paga as horas cheias
+      existe, então não dá pra travar isso num cálculo automático), a
+      calculadora agora mostra uma dica de REFERÊNCIA ao lado —
+      entrada−saída menos as pausas do turno — sem forçar nada, só
+      pra ajudar a pessoa a perceber se o número bate ou não.
+- [x] Novo `calculateShiftNetHours` (utils/kakeibo.js) — span do turno
+      inteiro menos todas as pausas preenchidas (diferente do
+      `calculateNightHours`, que só olha a fatia dentro do 22h~5h).
+- [x] Usado ao vivo com dados reais e achou um erro de digitação de
+      verdade: uma pausa preenchida como "12:30→15:15" (quase 3h!)
+      devia ser "12:30→13:15" (45min, almoço) — o campo teria
+      calculado 5,67h quando o esperado era ~7,67h. Corrigido o
+      próprio conteúdo de exemplo nos testes também (eu tinha
+      sugerido um horário de pausa errado numa resposta anterior).
+- [x] Aviso só aparece (em âmbar) quando a diferença passa de 0,1h —
+      pequena discrepância (tipo empresa arredondando um número
+      "oficial" que não bate exato com o relógio) não dispara alarme
+      falso.
+- [x] `ProfileEditor.jsx` (perfil completo, Hiru + Yakin) e
+      `SalaryCalculator.jsx` (aba pública, só Yakin — reposicionei a
+      dica pra ficar junto dos campos de horário do turno, não lá em
+      cima antes da pessoa nem ter chegado neles).
+- Testado com o cenário real da tela (pausa errada) — o aviso âmbar
+  apareceu certo mostrando "5.67h calculado". Corrigindo a pausa pro
+  valor certo (12:30→13:15, confirmado contra o quadro de turnos
+  original), o cálculo sobe pra 7.67h — bem perto do 7.83h do
+  contrato, com o aviso ainda aparecendo pela diferença pequena
+  (comportamento esperado, não bug). Build limpo.
+
 ## 🎨 v2.6.11 — Resumo do salário fixo no topo ao rolar (Kakeibo)
 - [x] A pedido: o card azul "Líquido estimado" no topo do perfil
       (`ProfileEditor.jsx`, aba Calculadora → Perfis) agora fica FIXO

@@ -38,6 +38,33 @@ function minutesInNightWindow(start, end) {
 // de pedir pra pessoa calcular na cabeça "quantos minutos de pausa
 // caem no 22h~5h" e digitar um número pronto, pede os HORÁRIOS de
 // cada pausa (do jeito que já vêm no contrato) e calcula sozinha.
+// Horas líquidas do turno inteiro (entrada→saída, menos TODAS as
+// pausas, em qualquer horário do dia) — usado só como REFERÊNCIA pra
+// comparar com "Horas padrão/dia" (que continua sendo um campo
+// digitado à mão de propósito: tem empresa que paga o líquido, mas
+// tem empresa que banca a pausa e paga as 8h cheias — não dá pra
+// assumir uma regra só). Foi vendo essa comparação que a gente achou
+// um erro de digitação real numa pausa.
+export function calculateShiftNetHours(start = "08:00", end = "17:00", breaks = []) {
+  const toMin = (t) => {
+    const [h = 0, m = 0] = (t || "0:0").split(":").map(Number);
+    return h * 60 + m;
+  };
+  const s = toMin(start);
+  let e = toMin(end);
+  if (e <= s) e += 24 * 60;
+  const span = e - s;
+  const totalBreaks = (breaks || [])
+    .filter((b) => b && b.start && b.end)
+    .reduce((sum, b) => {
+      let bs = toMin(b.start);
+      let be = toMin(b.end);
+      if (be <= bs) be += 24 * 60;
+      return sum + (be - bs);
+    }, 0);
+  return Math.max(0, span - totalBreaks) / 60;
+}
+
 export function calculateNightHours(start = "20:00", end = "04:45", breaks = []) {
   const totalShift = minutesInNightWindow(start, end);
   const totalBreaks = (breaks || [])

@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Calculator, X } from "lucide-react";
-import { calculateNightHours, yenLabel } from "../../utils/kakeibo.js";
+import { calculateNightHours, calculateShiftNetHours, yenLabel } from "../../utils/kakeibo.js";
 import { breaksEditor } from "./fields.jsx";
 
 export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = false }) {
@@ -167,6 +167,22 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
             <p className="nv-body mt-1 text-[10px] text-slate-400">
               Só a parte de cada pausa que cai DENTRO do 22h~5h é descontada do adicional noturno.
             </p>
+            {/* Referência (não trava "Horas padrão/dia") — compara com
+                span do turno menos as pausas, só pra ajudar a pegar erro
+                de digitação. Não força nada: empresa diferente paga
+                diferente (algumas bancam a pausa e pagam as horas
+                cheias). */}
+            {(() => {
+              const yakinCalc = calculateShiftNetHours(yakinStart, yakinEnd, yakinPauses);
+              const yakinDigitado = Number(standardHoursYakin) || 0;
+              const divergente = Math.abs(yakinCalc - yakinDigitado) > 0.1;
+              return (
+                <p className={`mt-2 text-[10.5px] ${divergente ? "font-medium text-amber-600" : "text-slate-400"}`}>
+                  {divergente ? "⚠️ " : ""}Entrada−saída menos pausas dá {yakinCalc.toFixed(2)}h ("Horas padrão/dia (noturno)" está em {yakinDigitado.toFixed(2)}h)
+                  {divergente ? " — confira se é erro de digitação ou se a empresa paga diferente do líquido mesmo" : ""}.
+                </p>
+              );
+            })()}
           </div>
         )}
         <div className="grid grid-cols-2 gap-3">
