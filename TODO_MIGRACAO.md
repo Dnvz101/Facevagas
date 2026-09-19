@@ -541,3 +541,33 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   funcionando via fallback, e que pausa maior que a janela nunca gera
   resultado negativo. Render real dos dois componentes + build limpo.
 
+## 🔧 v2.6.10 — Pausas por horário (não mais minutos calculados na mão)
+- [x] Achado revisando o v2.6.9 junto com o contrato de trabalho real
+      (Tokai Rika): pedir "quantos minutos de pausa caem no 22h~5h"
+      forçava a pessoa a calcular isso na cabeça — mas o contrato (e o
+      quadro de horários da empresa) já mostra as pausas como
+      HORÁRIOS de início/fim, não como minutos prontos. O campo não
+      batia com o formato que os dados realmente chegam.
+- [x] `calculateNightHours` (utils/kakeibo.js) agora recebe uma lista
+      de pausas (`[{start,end}, ...]`, até 3 por turno) em vez de um
+      número de minutos — calcula sozinha quanto de cada pausa cai
+      dentro do 22h~5h, sem a pessoa precisar somar nada.
+- [x] Novo `breaksEditor` compartilhado (`fields.jsx`) — 3 pares de
+      horário início/fim por turno, pausa em branco é ignorada.
+      Reaproveitado tanto no perfil completo (`ProfileEditor.jsx`,
+      hirukin E yakin) quanto na aba pública (`SalaryCalculator.jsx`,
+      só yakin).
+- [x] Perfil ganhou `hirukinBreaks`/`yakinBreaks` (arrays de 3 pausas)
+      no lugar de `hirukinPauseMin`/`yakinPauseMin` — como o campo
+      antigo foi lançado há poucas entregas (v2.6.9) e ainda não tinha
+      chegado a ser usado de verdade, não criei fallback de
+      compatibilidade pra ele (diferente do "standardHours" antigo,
+      que sim tem usuário real).
+- Testado copiando os horários EXATOS do contrato real (pausas
+  20:45~20:55, 22:50~23:35, 1:35~1:45) — bateu certo em 4.58h (4h35),
+  confirmando que a pausa das 20:45 (fora do 22h~5h) é corretamente
+  ignorada e só as outras duas (55min) descontam. Testado turno
+  diurno inteiro fora da janela (pausas não afetam nada, 0h) e pausa
+  parcialmente preenchida (só uma das 3, resto ignorado sem erro).
+  Render real dos dois componentes + build limpo.
+

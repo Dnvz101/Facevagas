@@ -7,6 +7,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Calculator, X } from "lucide-react";
 import { calculateNightHours, yenLabel } from "../../utils/kakeibo.js";
+import { breaksEditor } from "./fields.jsx";
 
 export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = false }) {
   const [hourlyBase, setHourlyBase] = useState(initialJikyu || 1500);
@@ -17,7 +18,7 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
   const [nikoutai, setNikoutai] = useState(true);
   const [yakinStart, setYakinStart] = useState("20:00");
   const [yakinEnd, setYakinEnd] = useState("04:45");
-  const [yakinPauseMin, setYakinPauseMin] = useState(0);
+  const [yakinPauses, setYakinPauses] = useState([{ start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }]);
   const [kmPerDay, setKmPerDay] = useState(10);
   const [yenPerKm, setYenPerKm] = useState(15);
   const [hiruDays, setHiruDays] = useState(11);
@@ -48,7 +49,7 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
     const base = normalHours * nn(hourlyBase);
     const teate = totalHours * nn(teatePerHour);
 
-    const nightPerShift = nikoutai ? calculateNightHours(yakinStart, yakinEnd, nn(yakinPauseMin)) : 0;
+    const nightPerShift = nikoutai ? calculateNightHours(yakinStart, yakinEnd, yakinPauses) : 0;
     const nightBonus = nn(yakinDays) * nightPerShift * nn(hourlyBase) * 0.25;
     const otNormal = nn(overtimeNormal) * nn(hourlyBase) * 1.25;
     const otNight = nn(overtimeNight) * nn(hourlyBase) * 1.5;
@@ -67,7 +68,7 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
       net: gross - deductions,
     };
   }, [
-    hourlyBase, teatePerHour, standardHoursHiru, standardHoursYakin, age, nikoutai, yakinStart, yakinEnd, yakinPauseMin,
+    hourlyBase, teatePerHour, standardHoursHiru, standardHoursYakin, age, nikoutai, yakinStart, yakinEnd, yakinPauses,
     kmPerDay, yenPerKm, hiruDays, yakinDays, overtimeNormal, overtimeNight, applyShakai,
   ]);
 
@@ -156,15 +157,16 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
           Trabalha em regime de turnos (nikoutai/yakin)
         </label>
         {nikoutai && (
-          <div className="mb-3 grid grid-cols-2 gap-3">
-            {timeField("Início do turno noturno", yakinStart, setYakinStart)}
-            {timeField("Fim do turno noturno", yakinEnd, setYakinEnd)}
-            <div className="col-span-2">
-              {numField("Pausa dentro do 22h~5h (minutos)", yakinPauseMin, setYakinPauseMin, 5)}
-              <p className="nv-body mt-1 text-[10px] text-slate-400">
-                Só a pausa que cai DENTRO da janela 22h~5h — olhe seu quadro de horários da empresa.
-              </p>
+          <div className="mb-3">
+            <div className="mb-3 grid grid-cols-2 gap-3">
+              {timeField("Início do turno noturno", yakinStart, setYakinStart)}
+              {timeField("Fim do turno noturno", yakinEnd, setYakinEnd)}
             </div>
+            <p className="nv-body mb-1.5 text-[10px] text-slate-400">Pausas do turno (copia do seu contrato — deixe em branco a que não usar):</p>
+            {breaksEditor(yakinPauses, setYakinPauses)}
+            <p className="nv-body mt-1 text-[10px] text-slate-400">
+              Só a parte de cada pausa que cai DENTRO do 22h~5h é descontada do adicional noturno.
+            </p>
           </div>
         )}
         <div className="grid grid-cols-2 gap-3">

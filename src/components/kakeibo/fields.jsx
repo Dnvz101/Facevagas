@@ -41,3 +41,28 @@ export function timeFieldKakeibo(label, value, onChange) {
     </div>
   );
 }
+
+// Editor de até 3 pausas de um turno (início/fim de cada uma) — o
+// mesmo formato que já vem escrito em contrato/quadro de horários da
+// empresa (ex: pausa curta, almoço/janta, alongamento), em vez de
+// pedir um número de minutos já calculado na mão. "breaks" é sempre um
+// array de 3 posições ({start,end} cada); pausa deixada em branco é
+// ignorada no cálculo. "labels" é opcional, some nomes tipo "Pausa
+// curta"/"Almoço"/"Alongamento" em vez de "Pausa 1/2/3" genérico.
+export function breaksEditor(breaks, onChange, labels = ["Pausa 1", "Pausa 2", "Pausa 3"]) {
+  const list = breaks && breaks.length === 3 ? breaks : [{ start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }];
+  const setBreak = (i, field) => (val) => {
+    const next = list.map((b, idx) => (idx === i ? { ...b, [field]: val } : b));
+    onChange(next);
+  };
+  return (
+    <div className="space-y-2">
+      {list.map((b, i) => (
+        <div key={i} className="grid grid-cols-2 gap-3">
+          {timeFieldKakeibo(`${labels[i]} — início`, b.start, setBreak(i, "start"))}
+          {timeFieldKakeibo(`${labels[i]} — fim`, b.end, setBreak(i, "end"))}
+        </div>
+      ))}
+    </div>
+  );
+}

@@ -8,7 +8,10 @@
 import { formatYen } from "./format.js";
 import { uid } from "./jobParsing.js";
 
-export function calculateNightHours(start = "20:00", end = "04:45", pauseMinutesInWindow = 0) {
+// Quantos minutos de um intervalo [start,end) caem dentro da janela
+// 22h~5h (considera virada de dia) — usado tanto pro turno inteiro
+// quanto pra cada pausa dentro dele, é a mesma conta nos dois casos.
+function minutesInNightWindow(start, end) {
   const toMin = (t) => {
     const [h = 0, m = 0] = (t || "0:0").split(":").map(Number);
     return h * 60 + m;
@@ -22,13 +25,27 @@ export function calculateNightHours(start = "20:00", end = "04:45", pauseMinutes
     const we = 29 * 60 + offset;
     total += Math.max(0, Math.min(e, we) - Math.max(s, ws));
   }
-  // Desconta as pausas (sem pagamento) que caem dentro da janela
-  // 22h~5h — achado com um turno real (Tokai Rika): sem isso, pausa de
-  // refeição/alongamento no meio do turno noturno era contada como
-  // hora trabalhada pro adicional de 25%, inflando a estimativa. Nunca
-  // deixa o resultado ficar negativo (pausa maior que a sobreposição
-  // calculada, ex: perfil ainda com os valores padrão de exemplo).
-  return Math.max(0, total - (Number(pauseMinutesInWindow) || 0)) / 60;
+  return total;
+}
+
+// "breaks" — lista de pausas do turno, cada uma com horário de
+// início/fim (ex: os 3 intervalos que já vêm escritos no contrato/
+// quadro de horários da empresa: pausa curta, almoço/janta,
+// alongamento). Cada pausa que a pessoa deixar em branco é ignorada.
+// Achado com um turno real (Tokai Rika): sem descontar pausa, a pausa
+// de refeição/alongamento no meio do turno noturno era contada como
+// hora trabalhada pro adicional de 25%, inflando a estimativa — em vez
+// de pedir pra pessoa calcular na cabeça "quantos minutos de pausa
+// caem no 22h~5h" e digitar um número pronto, pede os HORÁRIOS de
+// cada pausa (do jeito que já vêm no contrato) e calcula sozinha.
+export function calculateNightHours(start = "20:00", end = "04:45", breaks = []) {
+  const totalShift = minutesInNightWindow(start, end);
+  const totalBreaks = (breaks || [])
+    .filter((b) => b && b.start && b.end)
+    .reduce((sum, b) => sum + minutesInNightWindow(b.start, b.end), 0);
+  // Nunca deixa o resultado ficar negativo (pausa preenchida fora da
+  // janela calculada, ou maior que a sobreposição do turno).
+  return Math.max(0, totalShift - totalBreaks) / 60;
 }
 
 export const yenLabel = (v) => `¥${formatYen(Math.round(v || 0))}`;
@@ -55,10 +72,10 @@ export function makeDefaultProfile(name) {
     nikoutai: true,
     hirukinStart: "08:00", // turno diurno/asaban — em sistemas asaban/osoban pode encostar na janela noturna também
     hirukinEnd: "17:00",
-    hirukinPauseMin: 0, // minutos de pausa (sem pagamento) que caem dentro da janela 22h~5h nesse turno — ver calculateNightHours
+    hirukinBreaks: [{ start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }], // até 3 pausas do turno (curta, almoço/janta, alongamento) — vazio = não usada
     yakinStart: "20:00", // turno noturno/osoban
     yakinEnd: "04:45",
-    yakinPauseMin: 0,
+    yakinBreaks: [{ start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }],
     kmPerDay: 10,
     yenPerKm: 15,
     aliquotaShakai: 14.15,
@@ -124,8 +141,8 @@ export function computeProfilePayslip(p) {
   // isso precisa contar. Se o Hirukin for um turno bem diurno (ex:
   // 08h~17h), essa conta dá zero sozinha — não muda nada pra quem já
   // usava só o turno Yakin fixo.
-  const nightHoursPerYakinShift = p.nikoutai ? calculateNightHours(p.yakinStart, p.yakinEnd, nn(p.yakinPauseMin)) : 0;
-  const nightHoursPerHirukinShift = p.nikoutai ? calculateNightHours(p.hirukinStart, p.hirukinEnd, nn(p.hirukinPauseMin)) : 0;
+  const nightHoursPerYakinShift = p.nikoutai ? calculateNightHours(p.yakinStart, p.yakinEnd, p.yakinBreaks) : 0;
+  const nightHoursPerHirukinShift = p.nikoutai ? calculateNightHours(p.hirukinStart, p.hirukinEnd, p.hirukinBreaks) : 0;
   const totalNightHours = nn(p.yakinDays) * nightHoursPerYakinShift + nn(p.hiruDays) * nightHoursPerHirukinShift;
   const nightBonus = totalNightHours * nn(p.hourlyBase) * 0.25;
 

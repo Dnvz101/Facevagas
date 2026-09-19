@@ -6,7 +6,7 @@
 import { useMemo } from "react";
 import { computeProfilePayslip, yenLabel, ZANGYO_MODES, calculateNightHours } from "../../utils/kakeibo.js";
 import { formatYen } from "../../utils/format.js";
-import { fieldSuffix, timeFieldKakeibo } from "./fields.jsx";
+import { fieldSuffix, timeFieldKakeibo, breaksEditor } from "./fields.jsx";
 
 export default function ProfileEditor({ profile, onChange }) {
   const payslip = useMemo(() => computeProfilePayslip(profile), [profile]);
@@ -179,32 +179,32 @@ export default function ProfileEditor({ profile, onChange }) {
         {profile.nikoutai && (
           <>
             <p className="nv-body mb-1.5 text-[10.5px] font-semibold text-slate-500">☀️ Hirukin (turno diurno/asaban)</p>
-            <div className="mb-1.5 grid grid-cols-2 gap-3">
+            <div className="mb-2 grid grid-cols-2 gap-3">
               {timeFieldKakeibo("Início Hirukin", profile.hirukinStart, set("hirukinStart"))}
               {timeFieldKakeibo("Fim Hirukin", profile.hirukinEnd, set("hirukinEnd"))}
             </div>
-            <div className="mb-3">
-              {fieldSuffix("Pausa dentro do 22h~5h (Hirukin)", profile.hirukinPauseMin, set("hirukinPauseMin"), "min")}
+            <p className="nv-body mb-1.5 text-[10px] text-slate-400">Pausas do Hirukin (deixe em branco a que não usar):</p>
+            <div className="mb-4">
+              {breaksEditor(profile.hirukinBreaks, set("hirukinBreaks"))}
             </div>
 
             <p className="nv-body mb-1.5 text-[10.5px] font-semibold text-slate-500">🌙 Yakin (turno noturno/osoban)</p>
-            <div className="mb-1.5 grid grid-cols-2 gap-3">
+            <div className="mb-2 grid grid-cols-2 gap-3">
               {timeFieldKakeibo("Início Yakin", profile.yakinStart, set("yakinStart"))}
               {timeFieldKakeibo("Fim Yakin", profile.yakinEnd, set("yakinEnd"))}
             </div>
-            <div>
-              {fieldSuffix("Pausa dentro do 22h~5h (Yakin)", profile.yakinPauseMin, set("yakinPauseMin"), "min")}
-            </div>
-            <p className="nv-body mt-1 text-[10px] text-slate-400">
-              Some só a pausa (refeição, alongamento) que cai DENTRO da janela 22h~5h — olhe seu quadro de horários da
-              empresa. Pausa fora dessa janela não muda o adicional noturno.
+            <p className="nv-body mb-1.5 text-[10px] text-slate-400">Pausas do Yakin (deixe em branco a que não usar):</p>
+            {breaksEditor(profile.yakinBreaks, set("yakinBreaks"))}
+            <p className="nv-body mt-2 text-[10px] leading-relaxed text-slate-400">
+              Copia direto do seu contrato/quadro de horários — só a parte de cada pausa que cai DENTRO do 22h~5h é
+              descontada do adicional noturno; o resto não muda nada.
             </p>
 
             <div className="mt-2.5 space-y-0.5 text-[10.5px] text-slate-400">
-              <p>Hirukin: {calculateNightHours(profile.hirukinStart, profile.hirukinEnd, profile.hirukinPauseMin).toFixed(2)}h por turno caem no adicional noturno (22h~5h), já descontada a pausa.</p>
-              <p>Yakin: {calculateNightHours(profile.yakinStart, profile.yakinEnd, profile.yakinPauseMin).toFixed(2)}h por turno caem no adicional noturno (22h~5h), já descontada a pausa.</p>
+              <p>Hirukin: {calculateNightHours(profile.hirukinStart, profile.hirukinEnd, profile.hirukinBreaks).toFixed(2)}h por turno caem no adicional noturno (22h~5h), já descontadas as pausas.</p>
+              <p>Yakin: {calculateNightHours(profile.yakinStart, profile.yakinEnd, profile.yakinBreaks).toFixed(2)}h por turno caem no adicional noturno (22h~5h), já descontadas as pausas.</p>
             </div>
-            {calculateNightHours(profile.hirukinStart, profile.hirukinEnd, profile.hirukinPauseMin) > 0 && (
+            {calculateNightHours(profile.hirukinStart, profile.hirukinEnd, profile.hirukinBreaks) > 0 && (
               <p className="nv-body mt-1.5 text-[10.5px] font-medium text-amber-600">
                 ⚠️ Seu turno Hirukin também encosta na janela noturna — comum em sistemas asaban/osoban. Isso já está sendo somado corretamente.
               </p>
