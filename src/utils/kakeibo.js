@@ -8,7 +8,7 @@
 import { formatYen } from "./format.js";
 import { uid } from "./jobParsing.js";
 
-export function calculateNightHours(start = "20:00", end = "04:45") {
+export function calculateNightHours(start = "20:00", end = "04:45", pauseMinutesInWindow = 0) {
   const toMin = (t) => {
     const [h = 0, m = 0] = (t || "0:0").split(":").map(Number);
     return h * 60 + m;
@@ -22,7 +22,13 @@ export function calculateNightHours(start = "20:00", end = "04:45") {
     const we = 29 * 60 + offset;
     total += Math.max(0, Math.min(e, we) - Math.max(s, ws));
   }
-  return total / 60;
+  // Desconta as pausas (sem pagamento) que caem dentro da janela
+  // 22h~5h — achado com um turno real (Tokai Rika): sem isso, pausa de
+  // refeição/alongamento no meio do turno noturno era contada como
+  // hora trabalhada pro adicional de 25%, inflando a estimativa. Nunca
+  // deixa o resultado ficar negativo (pausa maior que a sobreposição
+  // calculada, ex: perfil ainda com os valores padrão de exemplo).
+  return Math.max(0, total - (Number(pauseMinutesInWindow) || 0)) / 60;
 }
 
 export const yenLabel = (v) => `¥${formatYen(Math.round(v || 0))}`;
@@ -34,7 +40,11 @@ export function makeDefaultProfile(name) {
     id: uid(),
     name,
     age: 35,
-    standardHours: 7.75,
+    // "standardHours" (nome antigo) fica só como fallback de leitura
+    // pra perfil salvo antes dessa mudança (ver computeProfilePayslip)
+    // — perfil novo já nasce com os dois separados.
+    standardHoursHiru: 7.75,
+    standardHoursYakin: 7.75,
     hourlyBase: 1500,
     teatePerHour: 0,
     teateRecebido: true, // Bônus condicional (assiduidade/pontualidade): cumpriu os requisitos esse mês? Vale tanto pro tipo "porHora" quanto "fixo".
@@ -45,8 +55,10 @@ export function makeDefaultProfile(name) {
     nikoutai: true,
     hirukinStart: "08:00", // turno diurno/asaban — em sistemas asaban/osoban pode encostar na janela noturna também
     hirukinEnd: "17:00",
+    hirukinPauseMin: 0, // minutos de pausa (sem pagamento) que caem dentro da janela 22h~5h nesse turno — ver calculateNightHours
     yakinStart: "20:00", // turno noturno/osoban
     yakinEnd: "04:45",
+    yakinPauseMin: 0,
     kmPerDay: 10,
     yenPerKm: 15,
     aliquotaShakai: 14.15,
@@ -77,7 +89,13 @@ export function makeDefaultExpenses() {
 export function computeProfilePayslip(p) {
   const nn = (v) => (typeof v === "number" && !isNaN(v) ? v : Number(v) || 0);
   const days = nn(p.hiruDays) + nn(p.yakinDays);
-  const normalHours = days * nn(p.standardHours);
+  // Hiru e Yakin podem ter uma quantidade líquida de horas diferente
+  // (pausas diferentes por turno) — achado com um turno real onde
+  // "horas padrão" era um único número pros dois. "?? p.standardHours"
+  // é só compatibilidade com perfil salvo antes dessa mudança.
+  const normalHours =
+    nn(p.hiruDays) * nn(p.standardHoursHiru ?? p.standardHours) +
+    nn(p.yakinDays) * nn(p.standardHoursYakin ?? p.standardHours);
   const totalHours = normalHours + nn(p.overtimeNormal) + nn(p.overtimeNight);
   const base = normalHours * nn(p.hourlyBase);
 
@@ -106,8 +124,8 @@ export function computeProfilePayslip(p) {
   // isso precisa contar. Se o Hirukin for um turno bem diurno (ex:
   // 08h~17h), essa conta dá zero sozinha — não muda nada pra quem já
   // usava só o turno Yakin fixo.
-  const nightHoursPerYakinShift = p.nikoutai ? calculateNightHours(p.yakinStart, p.yakinEnd) : 0;
-  const nightHoursPerHirukinShift = p.nikoutai ? calculateNightHours(p.hirukinStart, p.hirukinEnd) : 0;
+  const nightHoursPerYakinShift = p.nikoutai ? calculateNightHours(p.yakinStart, p.yakinEnd, nn(p.yakinPauseMin)) : 0;
+  const nightHoursPerHirukinShift = p.nikoutai ? calculateNightHours(p.hirukinStart, p.hirukinEnd, nn(p.hirukinPauseMin)) : 0;
   const totalNightHours = nn(p.yakinDays) * nightHoursPerYakinShift + nn(p.hiruDays) * nightHoursPerHirukinShift;
   const nightBonus = totalNightHours * nn(p.hourlyBase) * 0.25;
 

@@ -28,8 +28,9 @@ export default function ProfileEditor({ profile, onChange }) {
         <h4 className="nv-display mb-3 text-[13px] font-bold text-slate-900">⚙️ Dados Contratuais</h4>
         <div className="grid grid-cols-2 gap-3">
           {fieldSuffix("Salário base (Jikyu)", profile.hourlyBase, set("hourlyBase"), "¥", 10)}
-          {fieldSuffix("Horas padrão/dia", profile.standardHours, set("standardHours"), "h", 0.25)}
           {fieldSuffix("Idade", profile.age, set("age"), "anos")}
+          {fieldSuffix("Horas padrão/dia (Hiru)", profile.standardHoursHiru ?? profile.standardHours, set("standardHoursHiru"), "h", 0.25)}
+          {fieldSuffix("Horas padrão/dia (Yakin)", profile.standardHoursYakin ?? profile.standardHours, set("standardHoursYakin"), "h", 0.25)}
           {fieldSuffix("Adicional (Teate)/hora", profile.teatePerHour, set("teatePerHour"), "¥", 10)}
         </div>
       </div>
@@ -178,22 +179,32 @@ export default function ProfileEditor({ profile, onChange }) {
         {profile.nikoutai && (
           <>
             <p className="nv-body mb-1.5 text-[10.5px] font-semibold text-slate-500">☀️ Hirukin (turno diurno/asaban)</p>
-            <div className="mb-3 grid grid-cols-2 gap-3">
+            <div className="mb-1.5 grid grid-cols-2 gap-3">
               {timeFieldKakeibo("Início Hirukin", profile.hirukinStart, set("hirukinStart"))}
               {timeFieldKakeibo("Fim Hirukin", profile.hirukinEnd, set("hirukinEnd"))}
             </div>
+            <div className="mb-3">
+              {fieldSuffix("Pausa dentro do 22h~5h (Hirukin)", profile.hirukinPauseMin, set("hirukinPauseMin"), "min")}
+            </div>
 
             <p className="nv-body mb-1.5 text-[10.5px] font-semibold text-slate-500">🌙 Yakin (turno noturno/osoban)</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="mb-1.5 grid grid-cols-2 gap-3">
               {timeFieldKakeibo("Início Yakin", profile.yakinStart, set("yakinStart"))}
               {timeFieldKakeibo("Fim Yakin", profile.yakinEnd, set("yakinEnd"))}
             </div>
+            <div>
+              {fieldSuffix("Pausa dentro do 22h~5h (Yakin)", profile.yakinPauseMin, set("yakinPauseMin"), "min")}
+            </div>
+            <p className="nv-body mt-1 text-[10px] text-slate-400">
+              Some só a pausa (refeição, alongamento) que cai DENTRO da janela 22h~5h — olhe seu quadro de horários da
+              empresa. Pausa fora dessa janela não muda o adicional noturno.
+            </p>
 
             <div className="mt-2.5 space-y-0.5 text-[10.5px] text-slate-400">
-              <p>Hirukin: {calculateNightHours(profile.hirukinStart, profile.hirukinEnd).toFixed(2)}h por turno caem no adicional noturno (22h~5h).</p>
-              <p>Yakin: {calculateNightHours(profile.yakinStart, profile.yakinEnd).toFixed(2)}h por turno caem no adicional noturno (22h~5h).</p>
+              <p>Hirukin: {calculateNightHours(profile.hirukinStart, profile.hirukinEnd, profile.hirukinPauseMin).toFixed(2)}h por turno caem no adicional noturno (22h~5h), já descontada a pausa.</p>
+              <p>Yakin: {calculateNightHours(profile.yakinStart, profile.yakinEnd, profile.yakinPauseMin).toFixed(2)}h por turno caem no adicional noturno (22h~5h), já descontada a pausa.</p>
             </div>
-            {calculateNightHours(profile.hirukinStart, profile.hirukinEnd) > 0 && (
+            {calculateNightHours(profile.hirukinStart, profile.hirukinEnd, profile.hirukinPauseMin) > 0 && (
               <p className="nv-body mt-1.5 text-[10.5px] font-medium text-amber-600">
                 ⚠️ Seu turno Hirukin também encosta na janela noturna — comum em sistemas asaban/osoban. Isso já está sendo somado corretamente.
               </p>

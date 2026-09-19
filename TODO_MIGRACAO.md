@@ -513,3 +513,31 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   limite batido, e uma empresa sem vaga nenhuma não mostrou bloco de
   resumo vazio. Build limpo.
 
+## 🧮 v2.6.9 — Calculadora de salário: pausa noturna + horas Hiru/Yakin separadas
+- [x] Achado comparando um quadro de turno real (Tokai Rika) com a
+      calculadora: `calculateNightHours` calculava o adicional de 25%
+      (22h~5h) olhando só entrada/saída do turno, sem descontar as
+      pausas sem pagamento que caem dentro dessa janela — no turno
+      noturno real (18:45~3:30, pausas de 45min + 10min de alongamento
+      dentro do 22h~5h), isso inflava a conta de 4h35 reais pra 5h30
+      calculadas, quase 1h de diferença por turno.
+- [x] `calculateNightHours` (utils/kakeibo.js) ganhou um 3º parâmetro
+      opcional (minutos de pausa dentro da janela) que desconta do
+      resultado, nunca deixando ficar negativo.
+- [x] Ponto separado, mas relacionado: "Horas padrão/dia" era UM único
+      número pra turno diurno E noturno juntos, tanto na calculadora
+      pública quanto no perfil completo do Kakeibo — quando na prática
+      os dois podem ter pausas/horas líquidas diferentes. Virou dois
+      campos (`standardHoursHiru`/`standardHoursYakin`) nos dois
+      lugares, com fallback pro campo antigo em perfil já salvo (não
+      quebra ninguém que já vinha usando).
+- [x] `ProfileEditor.jsx` (perfil completo) e `SalaryCalculator.jsx`
+      (aba pública) atualizados com os campos novos + texto explicando
+      que só a pausa DENTRO do 22h~5h importa.
+- Testado com os números reais do turno que motivou o achado: sem
+  desconto de pausa dava 5.50h (o bug), com os 55min corretos dá
+  4.58h (4h35, batendo com o quadro real). Testado também que perfil
+  antigo (só com "standardHours", sem os campos novos) continua
+  funcionando via fallback, e que pausa maior que a janela nunca gera
+  resultado negativo. Render real dos dois componentes + build limpo.
+

@@ -11,11 +11,13 @@ import { calculateNightHours, yenLabel } from "../../utils/kakeibo.js";
 export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = false }) {
   const [hourlyBase, setHourlyBase] = useState(initialJikyu || 1500);
   const [teatePerHour, setTeatePerHour] = useState(0);
-  const [standardHours, setStandardHours] = useState(7.75);
+  const [standardHoursHiru, setStandardHoursHiru] = useState(7.75);
+  const [standardHoursYakin, setStandardHoursYakin] = useState(7.75);
   const [age, setAge] = useState(35);
   const [nikoutai, setNikoutai] = useState(true);
   const [yakinStart, setYakinStart] = useState("20:00");
   const [yakinEnd, setYakinEnd] = useState("04:45");
+  const [yakinPauseMin, setYakinPauseMin] = useState(0);
   const [kmPerDay, setKmPerDay] = useState(10);
   const [yenPerKm, setYenPerKm] = useState(15);
   const [hiruDays, setHiruDays] = useState(11);
@@ -41,12 +43,12 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
   const payslip = useMemo(() => {
     const nn = (v) => (typeof v === "number" && !isNaN(v) ? v : Number(v) || 0);
     const days = nn(hiruDays) + nn(yakinDays);
-    const normalHours = days * nn(standardHours);
+    const normalHours = nn(hiruDays) * nn(standardHoursHiru) + nn(yakinDays) * nn(standardHoursYakin);
     const totalHours = normalHours + nn(overtimeNormal) + nn(overtimeNight);
     const base = normalHours * nn(hourlyBase);
     const teate = totalHours * nn(teatePerHour);
 
-    const nightPerShift = nikoutai ? calculateNightHours(yakinStart, yakinEnd) : 0;
+    const nightPerShift = nikoutai ? calculateNightHours(yakinStart, yakinEnd, nn(yakinPauseMin)) : 0;
     const nightBonus = nn(yakinDays) * nightPerShift * nn(hourlyBase) * 0.25;
     const otNormal = nn(overtimeNormal) * nn(hourlyBase) * 1.25;
     const otNight = nn(overtimeNight) * nn(hourlyBase) * 1.5;
@@ -65,7 +67,7 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
       net: gross - deductions,
     };
   }, [
-    hourlyBase, teatePerHour, standardHours, age, nikoutai, yakinStart, yakinEnd,
+    hourlyBase, teatePerHour, standardHoursHiru, standardHoursYakin, age, nikoutai, yakinStart, yakinEnd, yakinPauseMin,
     kmPerDay, yenPerKm, hiruDays, yakinDays, overtimeNormal, overtimeNight, applyShakai,
   ]);
 
@@ -111,8 +113,9 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
         <h4 className="nv-display mb-3 text-[13px] font-bold text-slate-900">⚙️ Dados Contratuais</h4>
         <div className="grid grid-cols-2 gap-3">
           {numField("Salário por hora (Jikyu)", hourlyBase, setHourlyBase, 10)}
-          {numField("Horas padrão / dia", standardHours, setStandardHours, 0.25)}
           {numField("Idade", age, setAge)}
+          {numField("Horas padrão/dia (diurno)", standardHoursHiru, setStandardHoursHiru, 0.25)}
+          {numField("Horas padrão/dia (noturno)", standardHoursYakin, setStandardHoursYakin, 0.25)}
           {numField("Adicional (teate) por hora", teatePerHour, setTeatePerHour, 10)}
         </div>
         {age >= 40 && age <= 64 && (
@@ -156,6 +159,12 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
           <div className="mb-3 grid grid-cols-2 gap-3">
             {timeField("Início do turno noturno", yakinStart, setYakinStart)}
             {timeField("Fim do turno noturno", yakinEnd, setYakinEnd)}
+            <div className="col-span-2">
+              {numField("Pausa dentro do 22h~5h (minutos)", yakinPauseMin, setYakinPauseMin, 5)}
+              <p className="nv-body mt-1 text-[10px] text-slate-400">
+                Só a pausa que cai DENTRO da janela 22h~5h — olhe seu quadro de horários da empresa.
+              </p>
+            </div>
           </div>
         )}
         <div className="grid grid-cols-2 gap-3">
