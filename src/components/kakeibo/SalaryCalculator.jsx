@@ -19,6 +19,7 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
   const [yakinStart, setYakinStart] = useState("20:00");
   const [yakinEnd, setYakinEnd] = useState("04:45");
   const [yakinPauses, setYakinPauses] = useState([{ start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }]);
+  const [yakinTurno8h, setYakinTurno8h] = useState(false);
   const [kmPerDay, setKmPerDay] = useState(10);
   const [yenPerKm, setYenPerKm] = useState(15);
   const [hiruDays, setHiruDays] = useState(11);
@@ -49,7 +50,7 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
     const base = normalHours * nn(hourlyBase);
     const teate = totalHours * nn(teatePerHour);
 
-    const nightPerShift = nikoutai ? calculateNightHours(yakinStart, yakinEnd, yakinPauses) : 0;
+    const nightPerShift = nikoutai ? calculateNightHours(yakinStart, yakinEnd, yakinTurno8h ? [] : yakinPauses) : 0;
     const nightBonus = nn(yakinDays) * nightPerShift * nn(hourlyBase) * 0.25;
     const otNormal = nn(overtimeNormal) * nn(hourlyBase) * 1.25;
     const otNight = nn(overtimeNight) * nn(hourlyBase) * 1.5;
@@ -68,7 +69,7 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
       net: gross - deductions,
     };
   }, [
-    hourlyBase, teatePerHour, standardHoursHiru, standardHoursYakin, age, nikoutai, yakinStart, yakinEnd, yakinPauses,
+    hourlyBase, teatePerHour, standardHoursHiru, standardHoursYakin, age, nikoutai, yakinStart, yakinEnd, yakinPauses, yakinTurno8h,
     kmPerDay, yenPerKm, hiruDays, yakinDays, overtimeNormal, overtimeNight, applyShakai,
   ]);
 
@@ -119,6 +120,32 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
           {numField("Horas padrão/dia (noturno)", standardHoursYakin, setStandardHoursYakin, 0.25)}
           {numField("Adicional (teate) por hora", teatePerHour, setTeatePerHour, 10)}
         </div>
+        {/* "Turno de 8h" — quando a empresa paga o turno cheio sem
+            descontar pausa (nem do salário nem do adicional noturno),
+            não faz diferença nenhuma digitar os horários de pausa. */}
+        <div className="mt-3">
+          <label className="nv-body mb-1 block text-[10px] font-semibold text-slate-400">Turno noturno de 8h (empresa paga cheio)?</label>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => setYakinTurno8h(true)}
+              className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-semibold ${
+                yakinTurno8h ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-400"
+              }`}
+            >
+              Sim
+            </button>
+            <button
+              type="button"
+              onClick={() => setYakinTurno8h(false)}
+              className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-semibold ${
+                !yakinTurno8h ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-400"
+              }`}
+            >
+              Não
+            </button>
+          </div>
+        </div>
         {age >= 40 && age <= 64 && (
           <p className="nv-body mt-2 text-[10.5px] text-slate-400">Kaigo Hoken de 0,91% incluso automaticamente (idade entre 40~64 anos).</p>
         )}
@@ -163,26 +190,34 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
               {timeField("Fim do turno noturno", yakinEnd, setYakinEnd)}
             </div>
             <p className="nv-body mb-1.5 text-[10px] text-slate-400">Pausas do turno (copia do seu contrato — deixe em branco a que não usar):</p>
-            {breaksEditor(yakinPauses, setYakinPauses)}
-            <p className="nv-body mt-1 text-[10px] text-slate-400">
-              Só a parte de cada pausa que cai DENTRO do 22h~5h é descontada do adicional noturno.
-            </p>
-            {/* Referência (não trava "Horas padrão/dia") — compara com
-                span do turno menos as pausas, só pra ajudar a pegar erro
-                de digitação. Não força nada: empresa diferente paga
-                diferente (algumas bancam a pausa e pagam as horas
-                cheias). */}
-            {(() => {
-              const yakinCalc = calculateShiftNetHours(yakinStart, yakinEnd, yakinPauses);
-              const yakinDigitado = Number(standardHoursYakin) || 0;
-              const divergente = Math.abs(yakinCalc - yakinDigitado) > 0.1;
-              return (
-                <p className={`mt-2 text-[10.5px] ${divergente ? "font-medium text-amber-600" : "text-slate-400"}`}>
-                  {divergente ? "⚠️ " : ""}Entrada−saída menos pausas dá {yakinCalc.toFixed(2)}h ("Horas padrão/dia (noturno)" está em {yakinDigitado.toFixed(2)}h)
-                  {divergente ? " — confira se é erro de digitação ou se a empresa paga diferente do líquido mesmo" : ""}.
+            {yakinTurno8h ? (
+              <p className="nv-body text-[10.5px] text-slate-400">
+                Turno de 8h marcado como "empresa paga cheio" (acima) — pausa não afeta nada, escondida de propósito.
+              </p>
+            ) : (
+              <>
+                {breaksEditor(yakinPauses, setYakinPauses)}
+                <p className="nv-body mt-1 text-[10px] text-slate-400">
+                  Só a parte de cada pausa que cai DENTRO do 22h~5h é descontada do adicional noturno.
                 </p>
-              );
-            })()}
+                {/* Referência (não trava "Horas padrão/dia") — compara com
+                    span do turno menos as pausas, só pra ajudar a pegar erro
+                    de digitação. Não força nada: empresa diferente paga
+                    diferente (algumas bancam a pausa e pagam as horas
+                    cheias). */}
+                {(() => {
+                  const yakinCalc = calculateShiftNetHours(yakinStart, yakinEnd, yakinPauses);
+                  const yakinDigitado = Number(standardHoursYakin) || 0;
+                  const divergente = Math.abs(yakinCalc - yakinDigitado) > 0.1;
+                  return (
+                    <p className={`mt-2 text-[10.5px] ${divergente ? "font-medium text-amber-600" : "text-slate-400"}`}>
+                      {divergente ? "⚠️ " : ""}Entrada−saída menos pausas dá {yakinCalc.toFixed(2)}h ("Horas padrão/dia (noturno)" está em {yakinDigitado.toFixed(2)}h)
+                      {divergente ? " — confira se é erro de digitação ou se a empresa paga diferente do líquido mesmo" : ""}.
+                    </p>
+                  );
+                })()}
+              </>
+            )}
           </div>
         )}
         <div className="grid grid-cols-2 gap-3">

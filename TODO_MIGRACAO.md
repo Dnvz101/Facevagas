@@ -623,3 +623,28 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   gradiente verde entrou, o azul antigo saiu, e a faixa mostra
   bruto−descontos=líquido. Build limpo.
 
+## 🎚️ v2.6.13 — Toggle "Turno de 8h" (esconde pausas quando não fazem diferença)
+- [x] A pedido: pra empresa que paga o turno cheio (8h) sem descontar
+      pausa nem do salário nem do adicional noturno, preencher os
+      horários de pausa é trabalho sem utilidade nenhuma — agora tem
+      um Sim/Não ("Turno de 8h — empresa paga cheio?") perto de cada
+      campo "Horas padrão/dia". Marcando "Sim", o editor de pausas
+      daquele turno some da tela e some do cálculo por igual (mesmo
+      que ainda tenha pausa preenchida de antes de marcar).
+- [x] `hirukinTurno8h`/`yakinTurno8h` (perfil completo) e
+      `yakinTurno8h` (aba pública, só tem turno noturno) — nos dois
+      lugares, `computeProfilePayslip`/`SalaryCalculatorContent`
+      passam `[]` no lugar das pausas guardadas quando o toggle está
+      em "Sim", então uma pausa "esquecida" preenchida antes de trocar
+      pra "Sim" não afeta mais nada.
+- [x] O aviso de comparação (v2.6.12) some junto quando "Sim" está
+      marcado — comparar "horas digitadas" com "span menos pausa" não
+      faz sentido nesse modo, já que a pausa nem entra na conta.
+- Testado: perfil padrão (Não) mostra o editor de pausas normal;
+  perfil com os dois turnos em "Sim" não mostra editor nenhum, mostra
+  a explicação do porquê, e não mostra mais o aviso de divergência.
+  Confirmado com um turno real que cruza o 22h~5h que o cálculo do
+  adicional noturno realmente MUDA entre os dois modos (¥2.063 vs
+  ¥4.125 no cenário de teste) — prova que a pausa é mesmo ignorada
+  quando "Sim" está marcado, não só escondida da tela. Build limpo.
+
