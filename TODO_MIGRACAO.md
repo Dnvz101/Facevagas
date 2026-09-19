@@ -571,3 +571,24 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   parcialmente preenchida (só uma das 3, resto ignorado sem erro).
   Render real dos dois componentes + build limpo.
 
+## 🎨 v2.6.11 — Resumo do salário fixo no topo ao rolar (Kakeibo)
+- [x] A pedido: o card azul "Líquido estimado" no topo do perfil
+      (`ProfileEditor.jsx`, aba Calculadora → Perfis) agora fica FIXO
+      na tela enquanto rola (igual o cabeçalho do site), compacto, e
+      trocou de azul pra verde — a mesma cor/estilo do card de
+      fechamento "Saldo Líquido" que já existia lá embaixo.
+- [x] Passou a mostrar bruto − descontos = líquido numa linha só (info
+      que antes só aparecia no card de baixo), em vez de só o número
+      líquido sozinho — resumido pra caber numa faixa fina.
+- [x] `top-[142px]` é a altura estimada do cabeçalho do site (logo +
+      abas de navegação) — não consigo confirmar o pixel exato sem
+      testar num navegador de verdade; se a faixa verde ficar um
+      pouco alta ou baixa demais em relação à borda do cabeçalho, é
+      só ajustar esse número.
+- [x] Card verde de fechamento no final da tela (Proventos/Descontos)
+      continua no lugar, sem mudança — a faixa fixa é um resumo
+      rápido sempre à vista, não substitui o detalhamento completo.
+- Testado: render real (`react-dom/server`) confirmando que o
+  gradiente verde entrou, o azul antigo saiu, e a faixa mostra
+  bruto−descontos=líquido. Build limpo.
+

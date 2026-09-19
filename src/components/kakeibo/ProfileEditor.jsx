@@ -14,12 +14,21 @@ export default function ProfileEditor({ profile, onChange }) {
 
   return (
     <div className="space-y-4">
-      {/* Destaque: líquido estimado */}
-      <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 p-5 text-white shadow-sm">
-        <p className="nv-body truncate text-[10px] font-bold uppercase tracking-wide opacity-90">{profile.name} · Líquido estimado (Tedori)</p>
-        <p className="nv-display mt-1 text-[32px] font-extrabold leading-none">{yenLabel(payslip.net)}</p>
-        <p className="nv-body mt-1.5 text-[11px] opacity-85">
-          {payslip.days} dias trabalhados · {payslip.totalHours.toFixed(1)}h totais no mês
+      {/* Resumo — fixo na tela ao rolar (igual o cabeçalho do site),
+          compacto, com bruto−descontos=líquido junto (informação que
+          antes só aparecia lá embaixo, no card verde de fechamento).
+          "top-[142px]" é a altura estimada do cabeçalho do site (logo +
+          abas) — se não bater 100% certinho na borda, é só ajustar esse
+          número depois de ver ao vivo. */}
+      <div className="sticky top-[142px] z-10 flex items-center justify-between gap-2 rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-500 to-teal-600 px-4 py-2.5 text-white shadow-md">
+        <p className="nv-body min-w-0 flex-shrink-0 truncate text-[10px] font-bold uppercase tracking-wide opacity-90">
+          {profile.name}
+        </p>
+        <p className="nv-body flex flex-wrap items-baseline justify-end gap-x-1.5 gap-y-0 text-right">
+          <span className="whitespace-nowrap text-[10.5px] font-medium opacity-85">
+            {yenLabel(payslip.gross)} − {yenLabel(payslip.deductions)} =
+          </span>
+          <span className="nv-display whitespace-nowrap text-[18px] font-extrabold leading-none">{yenLabel(payslip.net)}</span>
         </p>
       </div>
 
