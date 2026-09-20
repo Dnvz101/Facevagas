@@ -4,9 +4,8 @@
 // ---------------------------------------------------------------
 
 import { useMemo } from "react";
-import { computeProfilePayslip, yenLabel, ZANGYO_MODES, calculateNightHours, calculateShiftNetHours } from "../../utils/kakeibo.js";
-import { formatYen } from "../../utils/format.js";
-import { fieldSuffix, timeFieldKakeibo, breaksEditor } from "./fields.jsx";
+import { computeProfilePayslip, yenLabel, ZANGYO_MODES, calculateNightHours } from "../../utils/kakeibo.js";
+import { fieldSuffix, timeFieldKakeibo } from "./fields.jsx";
 
 export default function ProfileEditor({ profile, onChange }) {
   const payslip = useMemo(() => computeProfilePayslip(profile), [profile]);
@@ -40,111 +39,9 @@ export default function ProfileEditor({ profile, onChange }) {
           {fieldSuffix("Idade", profile.age, set("age"), "anos")}
           {fieldSuffix("Horas padrão/dia (Hiru)", profile.standardHoursHiru ?? profile.standardHours, set("standardHoursHiru"), "h", 0.25)}
           {fieldSuffix("Horas padrão/dia (Yakin)", profile.standardHoursYakin ?? profile.standardHours, set("standardHoursYakin"), "h", 0.25)}
-          {fieldSuffix("Adicional (Teate)/hora", profile.teatePerHour, set("teatePerHour"), "¥", 10)}
+          {fieldSuffix("Adicional (Teate) Hiru/hora", profile.teatePerHour, set("teatePerHour"), "¥", 10)}
+          {fieldSuffix("Adicional (Teate) Yakin/hora", profile.teatePerHourYakin, set("teatePerHourYakin"), "¥", 10)}
         </div>
-
-        {/* "Turno de 8h" — quando a empresa paga o turno cheio sem
-            descontar pausa (nem do salário nem do adicional noturno),
-            não faz diferença nenhuma digitar os horários de pausa — daí
-            esse Sim/Não decide se o editor de pausas aparece lá embaixo
-            (seção Turnos Nikoutai) ou fica escondido. */}
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <div>
-            <label className="nv-body mb-1 block text-[10px] font-semibold text-slate-400">Turno Hiru de 8h (empresa paga cheio)?</label>
-            <div className="flex gap-1.5">
-              <button
-                type="button"
-                onClick={() => set("hirukinTurno8h")(true)}
-                className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-semibold ${
-                  profile.hirukinTurno8h ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-400"
-                }`}
-              >
-                Sim
-              </button>
-              <button
-                type="button"
-                onClick={() => set("hirukinTurno8h")(false)}
-                className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-semibold ${
-                  !profile.hirukinTurno8h ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-400"
-                }`}
-              >
-                Não
-              </button>
-            </div>
-          </div>
-          <div>
-            <label className="nv-body mb-1 block text-[10px] font-semibold text-slate-400">Turno Yakin de 8h (empresa paga cheio)?</label>
-            <div className="flex gap-1.5">
-              <button
-                type="button"
-                onClick={() => set("yakinTurno8h")(true)}
-                className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-semibold ${
-                  profile.yakinTurno8h ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-400"
-                }`}
-              >
-                Sim
-              </button>
-              <button
-                type="button"
-                onClick={() => set("yakinTurno8h")(false)}
-                className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-semibold ${
-                  !profile.yakinTurno8h ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-400"
-                }`}
-              >
-                Não
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Editor de pausas abre bem aqui, logo abaixo do Sim/Não —
-            antes ficava lá embaixo, na seção "Turnos Nikoutai", longe
-            de onde a decisão é tomada. */}
-        {!profile.hirukinTurno8h && (
-          <div className="mt-3 border-t border-slate-100 pt-3">
-            <p className="nv-body mb-1.5 text-[10px] text-slate-400">Pausas do Hirukin (deixe em branco a que não usar):</p>
-            {breaksEditor(profile.hirukinBreaks, set("hirukinBreaks"))}
-          </div>
-        )}
-        {!profile.yakinTurno8h && (
-          <div className="mt-3 border-t border-slate-100 pt-3">
-            <p className="nv-body mb-1.5 text-[10px] text-slate-400">Pausas do Yakin (deixe em branco a que não usar):</p>
-            {breaksEditor(profile.yakinBreaks, set("yakinBreaks"))}
-          </div>
-        )}
-
-        {/* Referência (não trava nada) — compara o número digitado com
-            span do turno menos as pausas, só pra ajudar a pegar erro de
-            digitação. Não aparece pro turno marcado como "8h cheio" —
-            nesse caso a pausa não importa, comparar não faz sentido. */}
-        {profile.nikoutai && (!profile.hirukinTurno8h || !profile.yakinTurno8h) && (
-          <div className="mt-2.5 space-y-1 border-t border-slate-100 pt-2.5 text-[10.5px]">
-            {(() => {
-              const hiruCalc = calculateShiftNetHours(profile.hirukinStart, profile.hirukinEnd, profile.hirukinBreaks);
-              const hiruDigitado = Number(profile.standardHoursHiru ?? profile.standardHours) || 0;
-              const hiruDivergente = Math.abs(hiruCalc - hiruDigitado) > 0.1;
-              const yakinCalc = calculateShiftNetHours(profile.yakinStart, profile.yakinEnd, profile.yakinBreaks);
-              const yakinDigitado = Number(profile.standardHoursYakin ?? profile.standardHours) || 0;
-              const yakinDivergente = Math.abs(yakinCalc - yakinDigitado) > 0.1;
-              return (
-                <>
-                  {!profile.hirukinTurno8h && (
-                    <p className={hiruDivergente ? "font-medium text-amber-600" : "text-slate-400"}>
-                      {hiruDivergente ? "⚠️ " : ""}Hiru: entrada−saída menos pausas dá {hiruCalc.toFixed(2)}h (você digitou {hiruDigitado.toFixed(2)}h)
-                      {hiruDivergente ? " — confira se é erro de digitação ou se a empresa paga diferente do líquido mesmo" : ""}.
-                    </p>
-                  )}
-                  {!profile.yakinTurno8h && (
-                    <p className={yakinDivergente ? "font-medium text-amber-600" : "text-slate-400"}>
-                      {yakinDivergente ? "⚠️ " : ""}Yakin: entrada−saída menos pausas dá {yakinCalc.toFixed(2)}h (você digitou {yakinDigitado.toFixed(2)}h)
-                      {yakinDivergente ? " — confira se é erro de digitação ou se a empresa paga diferente do líquido mesmo" : ""}.
-                    </p>
-                  )}
-                </>
-              );
-            })()}
-          </div>
-        )}
       </div>
 
       {/* Bônus condicional (assiduidade/pontualidade) — pergunta primeiro
@@ -185,13 +82,15 @@ export default function ProfileEditor({ profile, onChange }) {
           ))}
         </div>
 
-        {/* Sub-painel: Teate por hora — usa o mesmo "Adicional (Teate)/hora"
-            já preenchido em Dados Contratuais, só liga/desliga se cumpriu. */}
+        {/* Sub-painel: Teate por hora — usa o mesmo "Adicional (Teate)
+            Hiru/hora" já preenchido em Dados Contratuais, só liga/desliga
+            se cumpriu. Só afeta o teate do Hiru (o do Yakin é sempre pago,
+            não depende dessa condição). */}
         {profile.bonusCondicionalTipo === "porHora" && (
           <div className="mt-3 border-t border-slate-100 pt-3">
             <p className="nv-body mb-2 text-[11px] text-slate-500">
-              Usa o campo "Adicional (Teate)/hora" de Dados Contratuais. Já calculado automaticamente pelas horas do
-              mês (¥{formatYen(profile.teatePerHour)}/h × {payslip.totalHours.toFixed(2)}h = {yenLabel(payslip.totalHours * profile.teatePerHour)}).
+              Usa o campo "Adicional (Teate) Hiru/hora" de Dados Contratuais — só ele, não afeta o Teate Yakin. Se não
+              cumprir a condição, esse valor vira ¥0 no Hiru esse mês.
             </p>
             <label className="nv-body mb-1 block text-[10px] font-semibold text-slate-400">Cumpriu a condição esse mês?</label>
             <div className="flex gap-1.5">
@@ -301,16 +200,12 @@ export default function ProfileEditor({ profile, onChange }) {
               {timeFieldKakeibo("Início Yakin", profile.yakinStart, set("yakinStart"))}
               {timeFieldKakeibo("Fim Yakin", profile.yakinEnd, set("yakinEnd"))}
             </div>
-            <p className="nv-body mt-2 text-[10px] leading-relaxed text-slate-400">
-              Pausas de cada turno: lá em cima, em "⚙️ Dados Contratuais", logo abaixo do Sim/Não "Turno de 8h". Só a
-              parte de cada pausa que cai DENTRO do 22h~5h é descontada do adicional noturno; o resto não muda nada.
-            </p>
 
             <div className="mt-2.5 space-y-0.5 text-[10.5px] text-slate-400">
-              <p>Hirukin: {calculateNightHours(profile.hirukinStart, profile.hirukinEnd, profile.hirukinTurno8h ? [] : profile.hirukinBreaks).toFixed(2)}h por turno caem no adicional noturno (22h~5h), já descontadas as pausas.</p>
-              <p>Yakin: {calculateNightHours(profile.yakinStart, profile.yakinEnd, profile.yakinTurno8h ? [] : profile.yakinBreaks).toFixed(2)}h por turno caem no adicional noturno (22h~5h), já descontadas as pausas.</p>
+              <p>Hirukin: {calculateNightHours(profile.hirukinStart, profile.hirukinEnd).toFixed(2)}h por turno caem no adicional noturno (22h~5h).</p>
+              <p>Yakin: {calculateNightHours(profile.yakinStart, profile.yakinEnd).toFixed(2)}h por turno caem no adicional noturno (22h~5h).</p>
             </div>
-            {calculateNightHours(profile.hirukinStart, profile.hirukinEnd, profile.hirukinTurno8h ? [] : profile.hirukinBreaks) > 0 && (
+            {calculateNightHours(profile.hirukinStart, profile.hirukinEnd) > 0 && (
               <p className="nv-body mt-1.5 text-[10.5px] font-medium text-amber-600">
                 ⚠️ Seu turno Hirukin também encosta na janela noturna — comum em sistemas asaban/osoban. Isso já está sendo somado corretamente.
               </p>
@@ -375,9 +270,9 @@ export default function ProfileEditor({ profile, onChange }) {
           <h5 className="nv-body mb-2 text-[11px] font-bold text-emerald-700">💰 Proventos</h5>
           <div className="space-y-1 text-[11px] text-slate-500">
             <div className="flex justify-between gap-2"><span>Base</span><span className="font-semibold text-slate-700">{yenLabel(payslip.base)}</span></div>
-            {profile.teatePerHour > 0 && (
+            {(profile.teatePerHour > 0 || profile.teatePerHourYakin > 0) && (
               <div className={`flex justify-between gap-2 ${profile.bonusCondicionalTipo === "porHora" && profile.teateRecebido === false ? "text-rose-500" : ""}`}>
-                <span>Teate/hora{profile.bonusCondicionalTipo === "porHora" && profile.teateRecebido === false ? " (perdido)" : ""}</span>
+                <span>Teate (Hiru+Yakin){profile.bonusCondicionalTipo === "porHora" && profile.teateRecebido === false ? " (Hiru perdido)" : ""}</span>
                 <span className="font-semibold">{yenLabel(payslip.teate)}</span>
               </div>
             )}

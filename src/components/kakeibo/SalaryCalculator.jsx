@@ -6,20 +6,18 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Calculator, X } from "lucide-react";
-import { calculateNightHours, calculateShiftNetHours, yenLabel } from "../../utils/kakeibo.js";
-import { breaksEditor } from "./fields.jsx";
+import { calculateNightHours, yenLabel } from "../../utils/kakeibo.js";
 
 export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = false }) {
   const [hourlyBase, setHourlyBase] = useState(initialJikyu || 1500);
-  const [teatePerHour, setTeatePerHour] = useState(0);
+  const [teatePerHour, setTeatePerHour] = useState(0); // Teate do turno Hiru
+  const [teatePerHourYakin, setTeatePerHourYakin] = useState(0); // Teate do turno Yakin — tem fábrica que paga um valor diferente à noite
   const [standardHoursHiru, setStandardHoursHiru] = useState(7.75);
   const [standardHoursYakin, setStandardHoursYakin] = useState(7.75);
   const [age, setAge] = useState(35);
   const [nikoutai, setNikoutai] = useState(true);
   const [yakinStart, setYakinStart] = useState("20:00");
   const [yakinEnd, setYakinEnd] = useState("04:45");
-  const [yakinPauses, setYakinPauses] = useState([{ start: "", end: "" }, { start: "", end: "" }, { start: "", end: "" }]);
-  const [yakinTurno8h, setYakinTurno8h] = useState(false);
   const [kmPerDay, setKmPerDay] = useState(10);
   const [yenPerKm, setYenPerKm] = useState(15);
   const [hiruDays, setHiruDays] = useState(11);
@@ -45,12 +43,16 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
   const payslip = useMemo(() => {
     const nn = (v) => (typeof v === "number" && !isNaN(v) ? v : Number(v) || 0);
     const days = nn(hiruDays) + nn(yakinDays);
-    const normalHours = nn(hiruDays) * nn(standardHoursHiru) + nn(yakinDays) * nn(standardHoursYakin);
+    const hiruNormalHours = nn(hiruDays) * nn(standardHoursHiru);
+    const yakinNormalHours = nn(yakinDays) * nn(standardHoursYakin);
+    const normalHours = hiruNormalHours + yakinNormalHours;
     const totalHours = normalHours + nn(overtimeNormal) + nn(overtimeNight);
     const base = normalHours * nn(hourlyBase);
-    const teate = totalHours * nn(teatePerHour);
+    // Teate separado por turno — zangyo normal soma no Hiru, zangyo
+    // noturno soma no Yakin (mesmo raciocínio do perfil completo).
+    const teate = (hiruNormalHours + nn(overtimeNormal)) * nn(teatePerHour) + (yakinNormalHours + nn(overtimeNight)) * nn(teatePerHourYakin);
 
-    const nightPerShift = nikoutai ? calculateNightHours(yakinStart, yakinEnd, yakinTurno8h ? [] : yakinPauses) : 0;
+    const nightPerShift = nikoutai ? calculateNightHours(yakinStart, yakinEnd) : 0;
     const nightBonus = nn(yakinDays) * nightPerShift * nn(hourlyBase) * 0.25;
     const otNormal = nn(overtimeNormal) * nn(hourlyBase) * 1.25;
     const otNight = nn(overtimeNight) * nn(hourlyBase) * 1.5;
@@ -69,7 +71,7 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
       net: gross - deductions,
     };
   }, [
-    hourlyBase, teatePerHour, standardHoursHiru, standardHoursYakin, age, nikoutai, yakinStart, yakinEnd, yakinPauses, yakinTurno8h,
+    hourlyBase, teatePerHour, teatePerHourYakin, standardHoursHiru, standardHoursYakin, age, nikoutai, yakinStart, yakinEnd,
     kmPerDay, yenPerKm, hiruDays, yakinDays, overtimeNormal, overtimeNight, applyShakai,
   ]);
 
@@ -118,62 +120,9 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
           {numField("Idade", age, setAge)}
           {numField("Horas padrão/dia (diurno)", standardHoursHiru, setStandardHoursHiru, 0.25)}
           {numField("Horas padrão/dia (noturno)", standardHoursYakin, setStandardHoursYakin, 0.25)}
-          {numField("Adicional (teate) por hora", teatePerHour, setTeatePerHour, 10)}
+          {numField("Adicional (Teate) Hiru/hora", teatePerHour, setTeatePerHour, 10)}
+          {numField("Adicional (Teate) Yakin/hora", teatePerHourYakin, setTeatePerHourYakin, 10)}
         </div>
-        {/* "Turno de 8h" — quando a empresa paga o turno cheio sem
-            descontar pausa (nem do salário nem do adicional noturno),
-            não faz diferença nenhuma digitar os horários de pausa. */}
-        <div className="mt-3">
-          <label className="nv-body mb-1 block text-[10px] font-semibold text-slate-400">Turno noturno de 8h (empresa paga cheio)?</label>
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              onClick={() => setYakinTurno8h(true)}
-              className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-semibold ${
-                yakinTurno8h ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-400"
-              }`}
-            >
-              Sim
-            </button>
-            <button
-              type="button"
-              onClick={() => setYakinTurno8h(false)}
-              className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-semibold ${
-                !yakinTurno8h ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-400"
-              }`}
-            >
-              Não
-            </button>
-          </div>
-        </div>
-        {/* Editor de pausas abre bem aqui, logo abaixo do Sim/Não —
-            antes ficava lá embaixo, na seção "🔧 Avançado", longe de
-            onde a decisão é tomada. */}
-        {nikoutai && !yakinTurno8h && (
-          <div className="mt-3 border-t border-slate-100 pt-3">
-            <p className="nv-body mb-1.5 text-[10px] text-slate-400">Pausas do turno (copia do seu contrato — deixe em branco a que não usar):</p>
-            {breaksEditor(yakinPauses, setYakinPauses)}
-            <p className="nv-body mt-1 text-[10px] text-slate-400">
-              Só a parte de cada pausa que cai DENTRO do 22h~5h é descontada do adicional noturno.
-            </p>
-            {/* Referência (não trava "Horas padrão/dia") — compara com
-                span do turno menos as pausas, só pra ajudar a pegar erro
-                de digitação. Não força nada: empresa diferente paga
-                diferente (algumas bancam a pausa e pagam as horas
-                cheias). */}
-            {(() => {
-              const yakinCalc = calculateShiftNetHours(yakinStart, yakinEnd, yakinPauses);
-              const yakinDigitado = Number(standardHoursYakin) || 0;
-              const divergente = Math.abs(yakinCalc - yakinDigitado) > 0.1;
-              return (
-                <p className={`mt-2 text-[10.5px] ${divergente ? "font-medium text-amber-600" : "text-slate-400"}`}>
-                  {divergente ? "⚠️ " : ""}Entrada−saída menos pausas dá {yakinCalc.toFixed(2)}h ("Horas padrão/dia (noturno)" está em {yakinDigitado.toFixed(2)}h)
-                  {divergente ? " — confira se é erro de digitação ou se a empresa paga diferente do líquido mesmo" : ""}.
-                </p>
-              );
-            })()}
-          </div>
-        )}
         {age >= 40 && age <= 64 && (
           <p className="nv-body mt-2 text-[10.5px] text-slate-400">Kaigo Hoken de 0,91% incluso automaticamente (idade entre 40~64 anos).</p>
         )}
@@ -217,11 +166,6 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
             {timeField("Fim do turno noturno", yakinEnd, setYakinEnd)}
           </div>
         )}
-        {nikoutai && (
-          <p className="nv-body mb-3 text-[10px] leading-relaxed text-slate-400">
-            Pausas do turno: lá em cima, em "⚙️ Dados Contratuais", logo abaixo do Sim/Não "Turno de 8h".
-          </p>
-        )}
         <div className="grid grid-cols-2 gap-3">
           {numField("Deslocamento (km/dia)", kmPerDay, setKmPerDay)}
           {numField("Ajuda de custo (¥/km)", yenPerKm, setYenPerKm)}
@@ -234,6 +178,9 @@ export function SalaryCalculatorContent({ initialJikyu, watchInitialJikyu = fals
           <h5 className="nv-body mb-2 text-[11px] font-bold text-emerald-700">💰 Proventos</h5>
           <div className="space-y-1 text-[11px] text-slate-500">
             <div className="flex justify-between gap-2"><span>Base</span><span className="font-semibold text-slate-700">{yenLabel(payslip.base)}</span></div>
+            {payslip.teate > 0 && (
+              <div className="flex justify-between gap-2"><span>Teate (Hiru+Yakin)</span><span className="font-semibold text-slate-700">{yenLabel(payslip.teate)}</span></div>
+            )}
             <div className="flex justify-between gap-2"><span>Adic. noturno</span><span className="font-semibold text-slate-700">{yenLabel(payslip.nightBonus)}</span></div>
             <div className="flex justify-between gap-2"><span>Zangyo</span><span className="font-semibold text-slate-700">{yenLabel(payslip.otNormal)}</span></div>
             <div className="flex justify-between gap-2"><span>Zangyo noturno</span><span className="font-semibold text-slate-700">{yenLabel(payslip.otNight)}</span></div>

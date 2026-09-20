@@ -668,3 +668,30 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   componentes, e que a seção de Turnos Nikoutai não tem mais o editor
   de pausas duplicado. Build limpo.
 
+## ↩️ v2.6.15 — Removida a pauta de pausas (voltou a ser campo simples) + Teate Hiru/Yakin
+- [x] A pedido: todo o sistema de pausas/turno8h (v2.6.9 a v2.6.14) foi
+      revertido. "Horas padrão/dia" voltou a ser só um número digitado
+      direto (ex: 8, 7,8), sem editor de pausas, sem toggle "Turno de
+      8h", sem aviso de comparação. `calculateNightHours` voltou à
+      versão simples (só entrada/saída do turno, sem descontar pausa).
+- [x] `calculateShiftNetHours` e `breaksEditor` removidos do código
+      (não sobrou nenhum uso depois da reversão).
+- [x] Peça nova, aproveitando a limpeza: **Teate separado por turno**
+      (`teatePerHour` pro Hiru — nome mantido por compatibilidade —,
+      `teatePerHourYakin` novo pro Yakin) — tem fábrica que paga um
+      adicional diferente à noite (ex: ¥100 no Hiru, ¥200 no Yakin).
+      Zangyo normal soma no teate do Hiru, zangyo noturno soma no do
+      Yakin (mesmo raciocínio já usado pra separar as horas padrão).
+- [x] Modo "Base + Teate" do Zangyo também ficou correto por turno:
+      zangyo diurno usa Jikyu+Teate do Hiru, zangyo noturno usa
+      Jikyu+Teate do Yakin (antes usava só o teate do Hiru pros dois).
+- [x] Bônus condicional "porHora" continua ligado só ao Teate do Hiru
+      (não duplicado pro Yakin) — texto explicativo do painel
+      atualizado pra deixar isso claro.
+- [x] `ProfileEditor.jsx` e `SalaryCalculator.jsx` (aba pública)
+      atualizados nos dois — grade de "Dados Contratuais" ganhou os
+      dois campos de Teate lado a lado.
+- Testado: render real confirmando que sumiu todo vestígio de
+  pausas/turno8h nos dois componentes, que os dois campos de Teate
+  aparecem, e a matemática (¥100/h Hiru + ¥200/h Yakin, 10 dias/8h
+  cada turno = ¥24.000 esperado) bateu exato. Build limpo.
