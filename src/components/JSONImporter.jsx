@@ -58,7 +58,7 @@ export default function JSONImporter({ dbStatus, jobs, onImported }) {
         const semSalario = !nj.salarioHora; // parseSalaryRange sempre devolve número — 0 quando não achou nenhum valor
         return {
           key: uid(),
-          checked: true,
+          checked: !(semTitulo || semSalario), // sem título ou sem salário já entra DESMARCADA — precisa decisão explícita de manter
           mapped: nj,
           isUpdate: !!existing,
           existingId: existing?.id || null,
@@ -172,7 +172,7 @@ export default function JSONImporter({ dbStatus, jobs, onImported }) {
           {totalAvisos > 0 && (
             <p className="nv-body mb-2 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-[11.5px] font-medium text-amber-700">
               <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
-              {totalAvisos} vaga{totalAvisos === 1 ? "" : "s"} sem título e/ou sem salário — confira antes de publicar (ainda vão marcadas, você decide se mantém).
+              {totalAvisos} vaga{totalAvisos === 1 ? "" : "s"} sem título e/ou sem salário — já entraram desmarcadas, marque de volta se quiser publicar mesmo assim.
             </p>
           )}
 

@@ -781,3 +781,13 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   1 dia, e reimportação reativa corretamente. Filtros testados com 6
   cenários combinados (status sozinho, província sozinha, os dois
   juntos, busca+status) — todos bateram. Build limpo.
+## ☑️ v2.6.19 — Vaga sem título/salário já entra desmarcada na revisão
+- [x] A pedido: na lista de revisão do import (v2.6.17), vaga com
+      aviso (sem título e/ou sem salário) agora entra DESMARCADA por
+      padrão — antes entrava marcada igual as outras, e a decisão
+      "publicar mesmo assim" tinha que ser tomada ativamente desmarcando.
+      Agora é o oposto: só publica se marcar de volta, de propósito.
+- [x] Texto do aviso ajustado pra refletir o novo comportamento.
+- Testado com 3 cenários (vaga completa, sem título, sem salário) —
+  a completa vem marcada, as duas com problema vêm desmarcadas. Build
+  limpo.
