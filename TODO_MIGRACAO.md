@@ -695,3 +695,51 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   pausas/turno8h nos dois componentes, que os dois campos de Teate
   aparecem, e a matemática (¥100/h Hiru + ¥200/h Yakin, 10 dias/8h
   cada turno = ¥24.000 esperado) bateu exato. Build limpo.
+## 💬 v2.6.16 — WhatsApp sempre menciona NihonVagas, mesmo em link pronto do scraper
+- [x] Achado com um JSON real do scraper: quando ele já entrega o
+      link pronto (`https://wa.me/...?text=...`), a mensagem embutida
+      é genérica ("Olá, estou interessado na vaga...") e NUNCA
+      menciona o NihonVagas — o v2.5.5 só cobria o caso de número
+      puro (sem link pronto), então boa parte das vagas do scraper
+      ficava de fora dessa mensagem.
+- [x] `toWhatsAppLink` (format.js) agora reconstrói a mensagem SEMPRE
+      que tem `cargo` (candidato falando sobre uma vaga específica),
+      mesmo partindo de um link pronto — extrai só o número do link
+      (nunca tenta "consertar" prefixo de país) e troca o texto pela
+      mensagem padrão mencionando NihonVagas.jp.
+- ⚠️ Achado separado, fora do alcance desse conserto: o JSON tinha um
+      link com `55` (código do Brasil) em vez de `81` (Japão) —
+      `wa.me/558051560609` em vez de `wa.me/818051560609`. Isso é bug
+      no SCRAPER (script Python separado, fora deste repositório), não
+      no site. O conserto de hoje preserva esse número exatamente como
+      veio (não tenta adivinhar/reescrever o prefixo, pra nunca deixar
+      pior) — mas o número em si continua errado até corrigir na
+      origem. Vale revisar a lógica de montagem do link no scraper.
+- Testado com o JSON exato que você mandou (incluindo o número com o
+  bug 55/81) + 4 cenários de regressão: sem cargo não muda nada, link
+  pronto sem cargo passa reto, número puro com cargo continua igual
+  ao v2.5.5, e o link de suporte (PlanComparisonCards) continua com
+  só um "?text=" na URL final. Build limpo.
+## 📋 v2.6.17 — Importação de JSON ganhou tela de revisão antes de publicar
+- [x] A pedido: antes, subir o .json gravava DIRETO no banco sem
+      nenhuma chance de revisar. Agora o fluxo é: sobe o arquivo →
+      aparece uma lista de revisão (cargo + salário de cada vaga, com
+      checkbox) → só grava de verdade ao clicar em "Publicar".
+- [x] Cada linha mostra: checkbox, título, empresa/cidade, tag
+      "Atualização" quando já existe (deduplicada), e o salário — ou
+      um aviso "⚠️ Sem salário" no lugar do valor.
+- [x] Vaga sem título mostra "Sem título" em itálico âmbar no lugar do
+      texto vazio; linha inteira fica com fundo âmbar claro quando
+      falta título OU salário. Um resumo no topo mostra quantas vagas
+      têm algum aviso, mas nenhuma é desmarcada automaticamente — a
+      decisão de manter ou não fica com quem está revisando.
+- [x] Checkbox "marcar/desmarcar todas" no topo da lista, contador de
+      quantas estão selecionadas, e botão "Cancelar" pra descartar a
+      importação sem gravar nada.
+- [x] Lista com altura máxima e rolagem própria (não empurra a página
+      inteira pra baixo em lotes grandes).
+- Testado: estado inicial (antes de subir arquivo) mostra só o
+  dropzone, sem botão Publicar. Lógica de detecção de aviso testada
+  com `mapScrapedJob` de verdade em 4 cenários (vaga completa, sem
+  título, sem salário, sem nada) — os 3 casos problemáticos foram
+  identificados corretamente. Build limpo.
