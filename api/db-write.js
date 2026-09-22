@@ -41,6 +41,7 @@ const ADMIN_TABLES = new Set([
   "parceiros",
   "comunidade_conteudo",
   "service_categories",
+  "site_config",
 ]);
 
 // tabela -> nome da coluna que identifica o dono (na tabela, snake_case)

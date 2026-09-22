@@ -50,13 +50,14 @@ export function isNovoCicloConcluido(job) {
    vaga já reivindicada por uma empresa cadastrada — só afeta vaga
    "crua" que ainda veio só do scraper e ninguém assumiu.
 --------------------------------------------------------------- */
-export const STALE_THRESHOLD_MS = 9 * 24 * 60 * 60 * 1000; // ~9 dias — 3 ciclos de scrape de 2-3 dias
+export const STALE_THRESHOLD_MS = 9 * 24 * 60 * 60 * 1000; // valor padrão — dá pra ajustar pela tela (site_config.stale_threshold_dias), isso aqui é só o fallback antes da config carregar
 
-export function isJobStale(job, registeredPartners) {
+export function isJobStale(job, registeredPartners, staleThresholdDays) {
   if (job.arquivada) return false; // já arquivada, nada a fazer
   if (job.preenchida) return false; // vaga preenchida não precisa arquivar por cima
   if (!job.lastSeenAt) return false; // nunca foi vista pelo scraper (publicada por empresa, etc) — intocável
-  if (Date.now() - job.lastSeenAt < STALE_THRESHOLD_MS) return false;
+  const limiteMs = (Number(staleThresholdDays) > 0 ? Number(staleThresholdDays) : STALE_THRESHOLD_MS / (24 * 60 * 60 * 1000)) * 24 * 60 * 60 * 1000;
+  if (Date.now() - job.lastSeenAt < limiteMs) return false;
   const claimed = registeredPartners.some((p) => p.name === job.empresa);
   if (claimed) return false; // empresa já assumiu essa vaga — decisão de mantê-la aberta é dela, não do scraper
   return true;

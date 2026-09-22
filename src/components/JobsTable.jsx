@@ -17,6 +17,8 @@ export default function JobsTable({ jobs, onToggleBadge, onDelete, onDeleteMany,
   const [quotaWarning, setQuotaWarning] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [statusFiltro, setStatusFiltro] = useState("todas"); // "todas" | "ativas" | "preenchidas" | "arquivadas"
+  const [provinciaFiltro, setProvinciaFiltro] = useState("todas");
 
   const handleBadgeClick = (job, key, label) => {
     const turningOn = !job[key];
@@ -29,14 +31,22 @@ export default function JobsTable({ jobs, onToggleBadge, onDelete, onDeleteMany,
     onToggleBadge(job.id, key);
   };
 
-  // Busca simples por texto — cargo, empresa ou província, sem
-  // diferenciar maiúscula/minúscula. É o que deixa achar rápido tanto
-  // "aquela vaga da Toyota" quanto "todas as vagas com província
-  // errada tipo Santa Fe", pra revisar manualmente.
+  // Lista de províncias presentes nas vagas (pro filtro) — ordenada,
+  // sem repetir, ignora vazio.
+  const provinciasDisponiveis = [...new Set(jobs.map((j) => j.provincia).filter(Boolean))].sort();
+
+  // Busca por texto + filtro de status + filtro de província — os três
+  // se combinam (uma vaga só aparece se bater em todos os que
+  // estiverem ativos).
   const term = searchTerm.trim().toLowerCase();
-  const visibleJobs = term
-    ? jobs.filter((j) => `${j.cargo} ${j.empresa} ${j.provincia}`.toLowerCase().includes(term))
-    : jobs;
+  const visibleJobs = jobs.filter((j) => {
+    if (term && !`${j.cargo} ${j.empresa} ${j.provincia}`.toLowerCase().includes(term)) return false;
+    if (statusFiltro === "ativas" && (j.preenchida || j.arquivada)) return false;
+    if (statusFiltro === "preenchidas" && !j.preenchida) return false;
+    if (statusFiltro === "arquivadas" && !j.arquivada) return false;
+    if (provinciaFiltro !== "todas" && j.provincia !== provinciaFiltro) return false;
+    return true;
+  });
 
   const allVisibleSelected = visibleJobs.length > 0 && visibleJobs.every((j) => selectedIds.has(j.id));
   const toggleSelectAll = () => {
@@ -109,6 +119,26 @@ export default function JobsTable({ jobs, onToggleBadge, onDelete, onDeleteMany,
             placeholder="Buscar por cargo, empresa ou província..."
             className="nv-body min-w-[200px] flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-[12px] text-slate-700 outline-none focus:border-blue-400"
           />
+          <select
+            value={statusFiltro}
+            onChange={(e) => setStatusFiltro(e.target.value)}
+            className="nv-body flex-shrink-0 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[12px] text-slate-700 outline-none focus:border-blue-400"
+          >
+            <option value="todas">Status: todas</option>
+            <option value="ativas">Ativas</option>
+            <option value="preenchidas">Preenchidas</option>
+            <option value="arquivadas">Arquivadas</option>
+          </select>
+          <select
+            value={provinciaFiltro}
+            onChange={(e) => setProvinciaFiltro(e.target.value)}
+            className="nv-body flex-shrink-0 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[12px] text-slate-700 outline-none focus:border-blue-400"
+          >
+            <option value="todas">Província: todas</option>
+            {provinciasDisponiveis.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
           {selectedIds.size > 0 && (
             <button
               onClick={handleDeleteSelected}

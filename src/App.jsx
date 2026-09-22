@@ -61,6 +61,7 @@ import {
   fetchPlanosFromDB, upsertPlanosInDB,
   fetchPartnersFromDB, upsertPartnersInDB, deletePartnerFromDB,
   fetchIndicacoesConfigFromDB, upsertIndicacoesConfigInDB,
+  fetchSiteConfigFromDB, upsertSiteConfigInDB,
   incrementJobStatInDB,
 } from "./lib/supabase.js";
 import { setAdminToken, clearAdminToken, setPartnerToken, clearPartnerToken } from "./lib/session.js";
@@ -300,6 +301,9 @@ export default function App() {
   // Config da aba Indicações (55+) — texto do hero, regra de idade do
   // cross-post e WhatsApp dedicado. Singleton igual a banner/comunidade_banner.
   const [indicacoesConfig, setIndicacoesConfig] = useState(INDICACOES_CONFIG_DEFAULT);
+  // Ajustes gerais do site editáveis pelo Admin — começa só com
+  // "dias até arquivar vaga sumida" (era fixo em 9 dias no código).
+  const [siteConfig, setSiteConfig] = useState({ staleThresholdDias: 9 });
 
   // Estatísticas de uso do site inteiro (Super Admin) — contadores
   // simples, sem cookies/rastreamento de pessoa. "SITE_STATS_DEFAULT"
@@ -488,7 +492,7 @@ export default function App() {
 
     (async () => {
       try {
-        const [dbJobs, dbBanner, dbAlertBanner, dbAlertSubs, dbPlanos, dbPartners, dbSiteStats, dbCommunity, dbServiceCategories, dbServiceListings, dbCommunityBanner, dbIndicacoesConfig] = await Promise.all([
+        const [dbJobs, dbBanner, dbAlertBanner, dbAlertSubs, dbPlanos, dbPartners, dbSiteStats, dbCommunity, dbServiceCategories, dbServiceListings, dbCommunityBanner, dbIndicacoesConfig, dbSiteConfig] = await Promise.all([
           fetchJobsFromDB(),
           fetchBannerFromDB(),
           fetchAlertBannerFromDB(),
@@ -501,6 +505,7 @@ export default function App() {
           fetchServiceListingsFromDB(),
           fetchCommunityBannerFromDB(),
           fetchIndicacoesConfigFromDB(),
+          fetchSiteConfigFromDB(),
         ]);
         if (cancelled) return;
         if (dbJobs.length) setJobs(dbJobs);
@@ -515,6 +520,7 @@ export default function App() {
         if (dbServiceListings?.length) setServiceListings(dbServiceListings);
         if (dbCommunityBanner) setCommunityBanner((b) => ({ ...b, ...dbCommunityBanner }));
         if (dbIndicacoesConfig) setIndicacoesConfig((c) => ({ ...c, ...dbIndicacoesConfig }));
+        if (dbSiteConfig) setSiteConfig((c) => ({ ...c, ...dbSiteConfig }));
         setDbStatus("connected");
       } catch (err) {
         if (cancelled) return;
@@ -572,7 +578,7 @@ export default function App() {
           if (isNovoCicloConcluido(j)) {
             patch = { ...patch, isNovo: false, novoAtivadoEm: null };
           }
-          if (isJobStale(j, registeredPartners)) {
+          if (isJobStale(j, registeredPartners, siteConfig.staleThresholdDias)) {
             patch = { ...patch, arquivada: true };
           }
           if (patch) {
@@ -591,7 +597,7 @@ export default function App() {
     checkAutoCycles();
     const interval = setInterval(checkAutoCycles, 60 * 1000);
     return () => clearInterval(interval);
-  }, [dbStatus, registeredPartners]);
+  }, [dbStatus, registeredPartners, siteConfig.staleThresholdDias]);
 
   const { plan: currentPlan, quotaUsage, canUseBadge } = usePermissions(planos, planKey, jobs);
 
@@ -678,6 +684,16 @@ export default function App() {
       const next = typeof updater === "function" ? updater(prev) : updater;
       if (dbStatus === "connected") {
         upsertIndicacoesConfigInDB(next).catch((err) => console.error("Falha ao salvar config de Indicações:", err));
+      }
+      return next;
+    });
+  };
+
+  const handleSiteConfigChange = (updater) => {
+    setSiteConfig((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      if (dbStatus === "connected") {
+        upsertSiteConfigInDB(next).catch((err) => console.error("Falha ao salvar configuração do site:", err));
       }
       return next;
     });
@@ -1624,13 +1640,44 @@ export default function App() {
                   </button>
                 </div>
 
+                {/* Configuração: dias até arquivar vaga sumida — era
+                    fixo em 9 dias no código, agora ajustável aqui.
+                    Se a vaga voltar a aparecer num JSON novo do
+                    scraper, ela é reativada sozinha (lastSeenAt
+                    atualiza, arquivada volta pra false) — o limite só
+                    decide quanto tempo SEM ver de novo até arquivar. */}
+                <div className="mb-4 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex-1">
+                    <p className="nv-display text-[13px] font-bold text-slate-900">⏱️ Arquivamento automático</p>
+                    <p className="nv-body text-[11.5px] text-slate-500">
+                      Vaga que o scraper para de ver por esse tanto de dias é arquivada sozinha (nunca deletada — some da
+                      lista pública, mas o dado continua salvo, e reversível). Se ela aparecer de novo num JSON, volta a
+                      ficar ativa automaticamente.
+                    </p>
+                  </div>
+                  <div className="flex flex-shrink-0 items-center gap-1.5">
+                    <input
+                      type="number"
+                      min={1}
+                      value={siteConfig.staleThresholdDias}
+                      onChange={(e) => handleSiteConfigChange((prev) => ({ ...prev, staleThresholdDias: Math.max(1, Number(e.target.value) || 1) }))}
+                      className="nv-body w-16 rounded-lg border border-slate-200 px-2 py-1.5 text-center text-[13px] font-bold text-slate-800 outline-none focus:border-blue-400"
+                    />
+                    <span className="nv-body text-[12px] font-medium text-slate-500">dias</span>
+                  </div>
+                </div>
+
                 {/* canUseBadge aqui é sempre "true" de propósito —
                     "Todas as Vagas" é a ferramenta de gerenciamento
                     geral do Super Admin, não deve respeitar cota de
                     plano nenhuma (diferente do Publicador Mágico do
                     Admin, que simula de propósito a experiência de
-                    uma empresa naquele plano). */}
-                <JobsTable jobs={jobs} onToggleBadge={handleToggleBadge} onDelete={handleDelete} onDeleteMany={handleDeleteMany} canUseBadge={() => true} showNovoBadge onTogglePreenchida={handleTogglePreenchida} onToggleArquivada={handleToggleArquivada} />
+                    uma empresa naquele plano). canToggleVerificado é
+                    "false" aqui de propósito — o Selo Verificado de
+                    vaga só é decidido em "Parceiros & Selos" (nível da
+                    empresa); deixar editável nas duas telas ao mesmo
+                    tempo fazia uma sobrescrever a outra sem avisar. */}
+                <JobsTable jobs={jobs} onToggleBadge={handleToggleBadge} onDelete={handleDelete} onDeleteMany={handleDeleteMany} canUseBadge={() => true} canToggleVerificado={false} showNovoBadge onTogglePreenchida={handleTogglePreenchida} onToggleArquivada={handleToggleArquivada} />
               </div>
             )}
 

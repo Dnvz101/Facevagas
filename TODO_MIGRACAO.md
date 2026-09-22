@@ -743,3 +743,41 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   com `mapScrapedJob` de verdade em 4 cenários (vaga completa, sem
   título, sem salário, sem nada) — os 3 casos problemáticos foram
   identificados corretamente. Build limpo.
+## 🗂️ v2.6.18 — Filtros na tabela de vagas + arquivamento configurável + remove conflito de Verificado
+- [x] **Filtros**: "Vagas cadastradas" (Admin) ganhou dois selects —
+      Status (Todas/Ativas/Preenchidas/Arquivadas) e Província (lista
+      dinâmica, montada a partir das vagas que existem). Combinam com
+      a busca por texto já existente.
+- [x] **Dias até arquivar, configurável**: era um número fixo (9 dias)
+      direto no código (`STALE_THRESHOLD_MS`). Agora tem um campo na
+      tela do Admin (acima da tabela de vagas) pra digitar quantos
+      dias sem o scraper ver a vaga até ela arquivar sozinha — salvo
+      na tabela nova `site_config` (singleton, mesmo padrão de
+      `indicacoes_config`, escrita só via gateway com sessão de
+      Admin). `isJobStale` ganhou um 3º parâmetro opcional (o limite
+      em dias); sem ele, cai no padrão de 9 dias de sempre.
+- ⚠️ Continua só ARQUIVANDO, nunca deletando de verdade — isso já era
+      proposital (dado nunca se perde, sempre reversível) e não mudei
+      esse comportamento. Se quiser um limite adicional pra apagar de
+      verdade depois de arquivada por muito tempo, isso é uma decisão
+      à parte (mais arriscada, irreversível) que prefiro confirmar
+      com você separadamente antes de implementar.
+- [x] Confirmado: vaga arquivada que aparece de nov num JSON reimportado
+      volta a ficar ativa sozinha (o `lastSeenAt` atualiza e o
+      `isJobStale` já checa isso desde sempre) — não mudei esse
+      comportamento, só confirmei que continua funcionando com o
+      limite configurável.
+- [x] **Removido o conflito do Selo Verificado**: a tabela de vagas do
+      Admin tinha um botão clicável de "Verificado" POR VAGA, que
+      brigava com o Selo Verificado gerenciado em "Parceiros & Selos"
+      (por EMPRESA) — ligar um lá sobrescrevia o outro sem avisar.
+      Virou `canToggleVerificado={false}` no Admin (mesma trava que a
+      Área do Cliente já tinha) — agora "Verificado" aparece só como
+      informação (cinza, não clicável) na tabela de vagas; a única
+      forma de mudar é em "Parceiros & Selos".
+- Testado: `isJobStale` com limite customizado (3 dias arquiva uma
+  vaga de 5 dias, 10 dias não arquiva a mesma vaga — os dois batendo
+  certo), vaga de empresa cadastrada nunca arquiva mesmo com limite de
+  1 dia, e reimportação reativa corretamente. Filtros testados com 6
+  cenários combinados (status sozinho, província sozinha, os dois
+  juntos, busca+status) — todos bateram. Build limpo.

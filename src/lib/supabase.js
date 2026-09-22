@@ -473,6 +473,20 @@ export const supabaseAdapter = {
       match: { id: 1 },
     });
   },
+  // Usa a tabela `site_config` (singleton igual à `indicacoes_config`)
+  // do supabase-schema.sql (v25) — ajustes gerais do site editáveis
+  // pelo Admin, começando com "dias até arquivar vaga sumida".
+  async fetchSiteConfig() {
+    const rows = await supabaseRequest("site_config?select=*&id=eq.1");
+    if (!rows?.[0]) return null;
+    return { staleThresholdDias: rows[0].stale_threshold_dias ?? 9 };
+  },
+  async upsertSiteConfig(config) {
+    await dbWrite("site_config", "update", {
+      rows: { stale_threshold_dias: config.staleThresholdDias },
+      match: { id: 1 },
+    });
+  },
 };
 
 
@@ -514,3 +528,5 @@ export async function upsertPartnersInDB(partners) { return supabaseAdapter.upse
 export async function deletePartnerFromDB(id) { return supabaseAdapter.deletePartner(id); }
 export async function fetchIndicacoesConfigFromDB() { return supabaseAdapter.fetchIndicacoesConfig(); }
 export async function upsertIndicacoesConfigInDB(config) { return supabaseAdapter.upsertIndicacoesConfig(config); }
+export async function fetchSiteConfigFromDB() { return supabaseAdapter.fetchSiteConfig(); }
+export async function upsertSiteConfigInDB(config) { return supabaseAdapter.upsertSiteConfig(config); }

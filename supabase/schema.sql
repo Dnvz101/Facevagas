@@ -566,3 +566,27 @@ drop policy if exists "service_listings_public_delete" on public.service_listing
 -- disso pra carregar sem exigir login de ninguém) — só a ESCRITA
 -- mudou de dono nessa migração.
 
+
+-- =============================================================
+-- v25 — "site_config": singleton (mesmo padrão de "banner"/
+-- "indicacoes_config") com ajustes gerais do site editáveis pelo
+-- Admin. Começa só com "quantos dias sem o scraper ver a vaga até
+-- ela arquivar sozinha" (era um número fixo de 9 dias no código,
+-- agora dá pra ajustar pela tela). Escrita só via gateway (dbWrite),
+-- mesma trava de "indicacoes_config" — sem política pública de update.
+-- =============================================================
+create table if not exists public.site_config (
+  id int primary key default 1,
+  stale_threshold_dias integer not null default 9,
+  updated_at timestamptz not null default now(),
+  constraint site_config_singleton check (id = 1)
+);
+
+insert into public.site_config (id) values (1) on conflict (id) do nothing;
+
+alter table public.site_config enable row level security;
+
+drop policy if exists "site_config_public_read" on public.site_config;
+create policy "site_config_public_read" on public.site_config for select using (true);
+-- Sem política de update pública de propósito — só a service role
+-- (via api/db-write.js, com sessão de Admin) grava aqui.
