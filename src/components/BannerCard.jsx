@@ -7,12 +7,78 @@ import { useState, useRef } from "react";
 import { UserX, MousePointerClick, MessageCircle, Globe, Building2, Facebook, Star, Users, Heart, Megaphone, Loader2, ImagePlus } from "lucide-react";
 import { resizeImageFile } from "../utils/misc.js";
 
-export const BANNER_SOURCES = [
-  { icon: Facebook, label: "Vagas direto do Facebook", suffix: "(dezenas de comunidades)", iconClass: "fill-blue-600 text-blue-600" },
-  { icon: Globe, label: "Vagas dos sites de emprego" },
-  { icon: Building2, label: "Vagas direto da empreiteira" },
-  { icon: Star, label: "Vagas", suffix: "Exclusivas", shine: true, iconClass: "fill-amber-400 text-amber-400" },
+// Fontes de vagas exibidas no diagrama "tudo converge pro NihonVagas"
+// abaixo. Coordenadas em um viewBox fixo de 400x230, espelhadas em %
+// pros ícones (posicionados em HTML) baterem exatamente com onde a
+// linha do SVG chega.
+const FLOW_NODES = [
+  { id: "facebook", icon: Facebook, label: "Facebook", sub: "dezenas de comunidades", x: 60, y: 46, iconClass: "fill-blue-600 text-blue-600", ring: "ring-blue-100" },
+  { id: "sites", icon: Globe, label: "Sites de emprego", x: 340, y: 46, iconClass: "text-slate-500", ring: "ring-slate-100" },
+  { id: "empreiteira", icon: Building2, label: "Empreiteira", x: 60, y: 184, iconClass: "text-slate-500", ring: "ring-slate-100" },
+  { id: "exclusivas", icon: Star, label: "Exclusivas", x: 340, y: 184, iconClass: "fill-amber-400 text-amber-400", ring: "ring-amber-100", shine: true },
 ];
+const FLOW_VIEWBOX = { w: 400, h: 230 };
+const FLOW_CENTER = { x: 200, y: 115 };
+
+// Caminho em "cotovelo" (desce/sobe reto, curva suave, entra reto no
+// centro) — mesma ideia visual de diagramas de integração, mas com o
+// fluxo sempre apontando PRA DENTRO (fontes → site), não pra fora.
+function flowPath(node) {
+  const { x, y } = node;
+  const midY = y < FLOW_CENTER.y ? y + 50 : y - 50;
+  const bendX = x < FLOW_CENTER.x ? x + 20 : x - 20;
+  const endX = x < FLOW_CENTER.x ? FLOW_CENTER.x - 28 : FLOW_CENTER.x + 28;
+  return `M ${x} ${y} V ${midY} Q ${x} ${FLOW_CENTER.y} ${bendX} ${FLOW_CENTER.y} H ${endX}`;
+}
+
+// Diagrama "fontes de vagas convergindo pro NihonVagas" — substitui a
+// lista simples: mostra visualmente de onde as vagas vêm e que tudo
+// desagua num lugar só (o site), com linhas animadas fluindo pro
+// centro.
+function SourcesFlowDiagram() {
+  return (
+    <div className="relative mx-auto mt-1 w-full max-w-[360px]" style={{ aspectRatio: `${FLOW_VIEWBOX.w} / ${FLOW_VIEWBOX.h}` }}>
+      <svg viewBox={`0 0 ${FLOW_VIEWBOX.w} ${FLOW_VIEWBOX.h}`} className="absolute inset-0 h-full w-full" fill="none">
+        {FLOW_NODES.map((node) => (
+          <g key={node.id}>
+            <path d={flowPath(node)} stroke="#e2e8f0" strokeWidth="1.5" fill="none" />
+            <path d={flowPath(node)} stroke={node.shine ? "#f59e0b" : "#2563eb"} strokeOpacity="0.55" strokeWidth="2" strokeLinecap="round" fill="none" className="nv-flow-line" />
+          </g>
+        ))}
+      </svg>
+
+      {FLOW_NODES.map(({ id, icon: Icon, label, sub, x, y, iconClass, ring }) => (
+        <div
+          key={id}
+          className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1"
+          style={{ left: `${(x / FLOW_VIEWBOX.w) * 100}%`, top: `${(y / FLOW_VIEWBOX.h) * 100}%` }}
+        >
+          <div className={`flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm ring-1 ${ring}`}>
+            <Icon className={`h-4 w-4 ${iconClass}`} />
+          </div>
+          <p className={`nv-body whitespace-nowrap text-center text-[10px] font-bold leading-tight ${id === "exclusivas" ? "nv-text-shine" : "text-slate-700"}`}>
+            {label}
+          </p>
+          {sub && <p className="nv-body -mt-0.5 max-w-[90px] text-center text-[8.5px] leading-tight text-slate-400">{sub}</p>}
+        </div>
+      ))}
+
+      {/* Centro: o site */}
+      <div
+        className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1"
+        style={{ left: `${(FLOW_CENTER.x / FLOW_VIEWBOX.w) * 100}%`, top: `${(FLOW_CENTER.y / FLOW_VIEWBOX.h) * 100}%` }}
+      >
+        <div className="relative flex h-14 w-14 items-center justify-center">
+          <span className="nv-orbit-ping absolute inset-0 rounded-2xl bg-blue-500" />
+          <div className="nv-display relative flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-[20px] font-extrabold text-white shadow-md">
+            N
+          </div>
+        </div>
+        <p className="nv-display whitespace-nowrap text-[10.5px] font-extrabold text-slate-900">NihonVagas.jp</p>
+      </div>
+    </div>
+  );
+}
 
 export function InfoBanner({ jobs = [] }) {
   // "adicionadas" aqui conta vaga NOVA e vaga ATUALIZADA igual — as
@@ -37,18 +103,7 @@ export function InfoBanner({ jobs = [] }) {
         Novas oportunidades todos os dias, incluindo <span className="font-semibold text-blue-600">vagas exclusivas</span>.
       </p>
 
-      <div className="mt-3 space-y-1.5">
-        {BANNER_SOURCES.map(({ icon: Icon, label, suffix, shine, iconClass }, i) => (
-          <div key={i} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5">
-            <Icon className={`h-3.5 w-3.5 flex-shrink-0 ${iconClass || "text-slate-500"}`} />
-            <span className="nv-body text-[11px] font-medium text-slate-700">
-              {label}
-              {suffix && " "}
-              {suffix && (shine ? <span className="nv-text-shine font-extrabold">{suffix}</span> : <span className="text-slate-400">{suffix}</span>)}
-            </span>
-          </div>
-        ))}
-      </div>
+      <SourcesFlowDiagram />
 
       <div className="mt-4 grid grid-cols-3 divide-x divide-slate-100 text-center">
         <div className="px-1.5">

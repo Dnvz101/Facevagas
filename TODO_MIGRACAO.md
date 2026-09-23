@@ -835,3 +835,38 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   dois momentos (confirma que a animação está rodando). `npm run
   build` limpo; CSS de produção confere com `grid-cols-3` e
   `nv-text-shine` presentes no bundle final.
+## 🟣 v2.6.22 — Lista de fontes virou diagrama "tudo converge pro NihonVagas"
+- [x] A pedido ("não gostei, vamos brincar com outro estilo" + prompt
+      de referência de um componente de integração 21st.dev/shadcn):
+      troquei a lista vertical da v2.6.21 por um diagrama visual —
+      Facebook, Sites de emprego, Empreiteira e Exclusivas nas 4
+      pontas, com linhas animadas fluindo PRA DENTRO, convergindo pro
+      "N" do NihonVagas no centro (`SourcesFlowDiagram`, novo, dentro
+      de `BannerCard.jsx`).
+- [x] O componente de referência era TypeScript + shadcn + Base UI +
+      pacote `motion` — nosso projeto é JS puro (sem TS, sem shadcn),
+      então recriei o efeito só com Tailwind + SVG + CSS puro (mesmo
+      padrão já usado no projeto pros badges com glow), sem adicionar
+      nenhuma dependência nova no `package.json`.
+- [x] `index.css` ganhou `@keyframes nv-flow-dash` (traço animado
+      "andando" ao longo da linha, sentido fonte→centro) e
+      `@keyframes nv-orbit-ping` (anel pulsando atrás do "N", como um
+      radar/sinal chegando).
+- [x] `BANNER_SOURCES` foi removido (não é mais usado em lugar nenhum
+      — confirmado com grep antes de tirar) e substituído por
+      `FLOW_NODES` + `flowPath()`, que calculam a posição de cada
+      ícone e o caminho SVG em "cotovelo" até o centro a partir de um
+      viewBox fixo (400x230), sem números soltos espalhados pelo JSX.
+- [x] "Exclusivas" manteve o efeito de brilho (`nv-text-shine`) da
+      v2.6.21, agora aplicado no rótulo abaixo do ícone de estrela.
+- ⚠️ Achado durante o teste: o harness de preview com Tailwind via
+  CDN (usado nas versões anteriores pra screenshot rápido) tem um bug
+  próprio — `position: absolute` e `grid-cols-3` não renderizam
+  certo por lá, mesmo com o código correto. Passei a testar visual
+  trocando temporariamente o `src/main.jsx` pra renderizar só o
+  `InfoBanner`, rodando o `vite` de verdade do projeto (pipeline real
+  do PostCSS/Tailwind), tirando o screenshot, e restaurando o
+  `main.jsx` original depois — confirmado com `diff` que voltou
+  idêntico. Com o pipeline real, diagrama, brilho, grid de 3 colunas
+  e tudo mais renderizaram exatamente como esperado. `npm run build`
+  limpo depois da restauração.

@@ -64,6 +64,20 @@
   animation: nv-shine 2.2s linear infinite;
 }
 
+@keyframes nv-flow-dash {
+  to { stroke-dashoffset: -24; }
+}
+.nv-flow-line {
+  stroke-dasharray: 5 8;
+  animation: nv-flow-dash 0.8s linear infinite;
+}
+
+@keyframes nv-orbit-ping {
+  0% { transform: scale(1); opacity: 0.45; }
+  75%, 100% { transform: scale(1.35); opacity: 0; }
+}
+.nv-orbit-ping { animation: nv-orbit-ping 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
 @media print {
   body * { visibility: hidden; }
   #nv-print-report, #nv-print-report * { visibility: visible; }
