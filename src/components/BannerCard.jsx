@@ -4,14 +4,14 @@
 // ---------------------------------------------------------------
 
 import { useState, useRef } from "react";
-import { UserX, MousePointerClick, MessageCircle, Globe, Building2, Facebook, Instagram, Users, Heart, Megaphone, Loader2, ImagePlus } from "lucide-react";
+import { UserX, MousePointerClick, MessageCircle, Globe, Building2, Facebook, Star, Users, Heart, Megaphone, Loader2, ImagePlus } from "lucide-react";
 import { resizeImageFile } from "../utils/misc.js";
 
 export const BANNER_SOURCES = [
-  { icon: Globe, label: "Sites de Emprego" },
-  { icon: Building2, label: "Empreiteiras" },
-  { icon: Facebook, label: "Facebook", iconClass: "fill-blue-600 text-blue-600" },
-  { icon: Instagram, label: "Instagram", iconClass: "text-pink-500" },
+  { icon: Facebook, label: "Vagas direto do Facebook", suffix: "(dezenas de comunidades)", iconClass: "fill-blue-600 text-blue-600" },
+  { icon: Globe, label: "Vagas dos sites de emprego" },
+  { icon: Building2, label: "Vagas direto da empreiteira" },
+  { icon: Star, label: "Vagas", suffix: "Exclusivas", shine: true, iconClass: "fill-amber-400 text-amber-400" },
 ];
 
 export function InfoBanner({ jobs = [] }) {
@@ -37,6 +37,19 @@ export function InfoBanner({ jobs = [] }) {
         Novas oportunidades todos os dias, incluindo <span className="font-semibold text-blue-600">vagas exclusivas</span>.
       </p>
 
+      <div className="mt-3 space-y-1.5">
+        {BANNER_SOURCES.map(({ icon: Icon, label, suffix, shine, iconClass }, i) => (
+          <div key={i} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5">
+            <Icon className={`h-3.5 w-3.5 flex-shrink-0 ${iconClass || "text-slate-500"}`} />
+            <span className="nv-body text-[11px] font-medium text-slate-700">
+              {label}
+              {suffix && " "}
+              {suffix && (shine ? <span className="nv-text-shine font-extrabold">{suffix}</span> : <span className="text-slate-400">{suffix}</span>)}
+            </span>
+          </div>
+        ))}
+      </div>
+
       <div className="mt-4 grid grid-cols-3 divide-x divide-slate-100 text-center">
         <div className="px-1.5">
           <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
@@ -60,18 +73,6 @@ export function InfoBanner({ jobs = [] }) {
             Fale direto com o <span className="text-blue-600">担当者 (tantousha)</span>
           </p>
           <p className="nv-body mt-0.5 text-[10px] leading-tight text-slate-500">Você fala diretamente com o responsável pela vaga.</p>
-        </div>
-      </div>
-
-      <div className="mt-4 rounded-xl bg-slate-50 p-3">
-        <p className="nv-body mb-2 text-[11px] font-bold text-slate-700">Vagas reunidas de diversas fontes:</p>
-        <div className="grid grid-cols-2 gap-1.5">
-          {BANNER_SOURCES.map(({ icon: Icon, label, iconClass }) => (
-            <div key={label} className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5">
-              <Icon className={`h-3.5 w-3.5 flex-shrink-0 ${iconClass || "text-slate-500"}`} />
-              <span className="nv-body truncate text-[11px] font-medium text-slate-700">{label}</span>
-            </div>
-          ))}
         </div>
       </div>
     </div>

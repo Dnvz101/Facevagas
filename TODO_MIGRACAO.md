@@ -809,3 +809,29 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
 - Testado com 5 vagas de idades variadas (1, 6, 8 dias e uma sem
   `lastSeenAt`) — contou certinho só as 3 dentro da janela de 7 dias,
   resto do banner permaneceu idêntico. Build limpo.
+## 🟢 v2.6.21 — "Vagas reunidas de fontes" subiu pra logo abaixo do subtítulo, textos com "Vagas" na frente + brilho em "Exclusivas"
+- [x] A pedido: o bloco de fontes (antes lá embaixo, depois do trio
+      "Sem cadastro/Um toque/Fale direto", com o rótulo "Vagas
+      reunidas de diversas fontes:") subiu pra logo abaixo do
+      subtítulo "Novas oportunidades todos os dias, incluindo vagas
+      exclusivas." — é a primeira coisa que aparece depois da
+      mensagem de contagem.
+- [x] Trocado o grid 2x2 compacto (com truncate) por uma lista vertical
+      de 4 linhas, já que os textos novos são mais longos.
+- [x] Rótulos trocados, todos começando com "Vagas" como pedido:
+      "Vagas direto do Facebook (dezenas de comunidades)", "Vagas dos
+      sites de emprego", "Vagas direto da empreiteira", "Vagas
+      Exclusivas". Instagram saiu da lista (não foi pedido no novo
+      texto); ícone de "Exclusivas" virou uma estrela.
+- [x] "Exclusivas" ganhou efeito de brilho animado (gradiente azul
+      correndo pelo texto, `nv-text-shine`/`@keyframes nv-shine` novos
+      no `index.css`) — só essa palavra anima, "Vagas" fica no texto
+      normal, igual foi pedido ("dar um efeito de animação no
+      EXCLUSIVAS").
+      `BANNER_SOURCES` (era só usado por essa seção) ganhou os campos
+      `suffix` e `shine` pra isso.
+- Testado renderizando o `InfoBanner` isolado num harness Playwright:
+  os 4 itens aparecem na nova posição, "Exclusivas" muda de tom entre
+  dois momentos (confirma que a animação está rodando). `npm run
+  build` limpo; CSS de produção confere com `grid-cols-3` e
+  `nv-text-shine` presentes no bundle final.
