@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------
 
 import { useState, useRef } from "react";
-import { History, UserX, MousePointerClick, MessageCircle, Globe, Building2, Facebook, Instagram, Users, Heart, Megaphone, Loader2, ImagePlus } from "lucide-react";
+import { UserX, MousePointerClick, MessageCircle, Globe, Building2, Facebook, Instagram, Users, Heart, Megaphone, Loader2, ImagePlus } from "lucide-react";
 import { resizeImageFile } from "../utils/misc.js";
 
 export const BANNER_SOURCES = [
@@ -14,15 +14,23 @@ export const BANNER_SOURCES = [
   { icon: Instagram, label: "Instagram", iconClass: "text-pink-500" },
 ];
 
-export function InfoBanner() {
+export function InfoBanner({ jobs = [] }) {
+  // "adicionadas" aqui conta vaga NOVA e vaga ATUALIZADA igual — as
+  // duas passam por mapScrapedJob no import (JSONImporter.jsx), que
+  // sempre atualiza lastSeenAt pra "agora". Não é um número fixo nem
+  // aleatório: é a contagem de verdade de quantas vagas foram tocadas
+  // por um import nos últimos 7 dias.
+  const seteDiasMs = 7 * 24 * 60 * 60 * 1000;
+  const vagasRecentes = jobs.filter((j) => j.lastSeenAt && Date.now() - j.lastSeenAt < seteDiasMs).length;
+
   return (
     <div className="nv-rise rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-center gap-3">
         <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-blue-600 shadow-sm">
-          <History className="h-5 w-5 text-white" />
+          <span className="h-3 w-3 animate-pulse rounded-full bg-white" />
         </div>
         <h3 className="nv-display text-[17px] font-extrabold leading-tight text-slate-900">
-          Vagas <span className="text-blue-600">atualizadas a cada hora</span>
+          <span className="text-slate-900">{vagasRecentes}</span> <span className="text-blue-600">vagas adicionadas nos últimos 7 dias</span>
         </h3>
       </div>
       <p className="nv-body mt-1.5 text-[12px] text-slate-500">
@@ -124,7 +132,7 @@ export function CommunityInfoBanner({ onCadastrar }) {
   );
 }
 
-export default function BannerCard({ banner, variant = "vagas", onCadastrar }) {
+export default function BannerCard({ banner, variant = "vagas", onCadastrar, jobs = [] }) {
   if (banner.mode === "image" && banner.imageUrl) {
     return (
       <div className="nv-rise flex max-h-72 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
@@ -140,13 +148,13 @@ export default function BannerCard({ banner, variant = "vagas", onCadastrar }) {
       </div>
     );
   }
-  return variant === "comunidade" ? <CommunityInfoBanner onCadastrar={onCadastrar} /> : <InfoBanner />;
+  return variant === "comunidade" ? <CommunityInfoBanner onCadastrar={onCadastrar} /> : <InfoBanner jobs={jobs} />;
 }
 
 /* ---------------------------------------------------------------
    Admin: Banner editor
 --------------------------------------------------------------- */
-export function BannerEditor({ banner, setBanner, title = "Comunicado principal", description = "Controla o primeiro card exibido para todos os visitantes.", variant = "vagas" }) {
+export function BannerEditor({ banner, setBanner, title = "Comunicado principal", description = "Controla o primeiro card exibido para todos os visitantes.", variant = "vagas", jobs = [] }) {
   const fileRef = useRef(null);
   const [resizing, setResizing] = useState(false);
   const [resizeError, setResizeError] = useState(null);
@@ -241,7 +249,7 @@ export function BannerEditor({ banner, setBanner, title = "Comunicado principal"
             personalizada, use os modos "Texto de utilidade pública" ou "Imagem de comunicado" acima.
           </p>
           <div className="scale-[0.85] origin-top">
-            {variant === "comunidade" ? <CommunityInfoBanner /> : <InfoBanner />}
+            {variant === "comunidade" ? <CommunityInfoBanner /> : <InfoBanner jobs={jobs} />}
           </div>
         </div>
       )}

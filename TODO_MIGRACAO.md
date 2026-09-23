@@ -791,3 +791,21 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
 - Testado com 3 cenários (vaga completa, sem título, sem salário) —
   a completa vem marcada, as duas com problema vêm desmarcadas. Build
   limpo.
+## 🟢 v2.6.20 — Banner "Vagas atualizadas a cada hora" virou contador real de 7 dias
+- [x] A pedido: trocado "Vagas atualizadas a cada hora" (texto fixo)
+      pelo número REAL de vagas tocadas por um import nos últimos 7
+      dias — conta vaga nova E atualizada igual (as duas passam por
+      `mapScrapedJob` no import, que sempre atualiza `lastSeenAt` pra
+      "agora"), do jeito que foi pedido. Não é número fixo nem
+      aleatório — é `jobs.filter(lastSeenAt dentro de 7 dias).length`.
+- [x] Ícone trocou de relógio estático pra um ponto branco com
+      `animate-pulse` (efeito "ao vivo"), mesmo quadrado azul de
+      antes. Resto do banner (subtítulo, "Sem cadastro/Um toque/Fale
+      direto", "Vagas reunidas de diversas fontes") ficou 100%
+      intocado, como pedido.
+- [x] `InfoBanner`/`BannerCard`/`BannerEditor` ganharam prop `jobs`
+      (default `[]`, seguro mesmo se algum call site esquecer de
+      passar) — encadeado até o App.jsx nos 3 pontos onde são usados.
+- Testado com 5 vagas de idades variadas (1, 6, 8 dias e uma sem
+  `lastSeenAt`) — contou certinho só as 3 dentro da janela de 7 dias,
+  resto do banner permaneceu idêntico. Build limpo.

@@ -1450,7 +1450,7 @@ export default function App() {
       <main className="mx-auto max-w-3xl px-5 py-6">
         {tab === "vagas" && (
           <div className="space-y-4">
-            <BannerCard banner={banner} />
+            <BannerCard banner={banner} jobs={jobs} />
 
             <FilterBar jobs={jobs} filters={filters} setFilters={setFilters} />
 
@@ -1556,7 +1556,7 @@ export default function App() {
 
             {adminTab === "comunicados" && (
               <div className="space-y-5">
-                <BannerEditor banner={banner} setBanner={handleBannerChange} />
+                <BannerEditor banner={banner} setBanner={handleBannerChange} jobs={jobs} />
                 <BannerEditor
                   banner={communityBanner}
                   setBanner={handleCommunityBannerChange}
