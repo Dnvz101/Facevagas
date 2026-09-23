@@ -870,3 +870,44 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   idêntico. Com o pipeline real, diagrama, brilho, grid de 3 colunas
   e tudo mais renderizaram exatamente como esperado. `npm run build`
   limpo depois da restauração.
+## 🔵 v2.6.23 — Banner redesenhado (cards + "Hub Central") a partir do HTML do Gemini, ícone do Facebook corrigido, novo texto no subtítulo
+- [x] O usuário mandou pro Gemini melhorar o diagrama da v2.6.22, e o
+      Gemini devolveu HTML/Tailwind puro (2 variações — uma "cheia" e
+      uma "compacta") fora do projeto. Portei o resultado (a versão
+      que bateu com o screenshot real, essencialmente a variação
+      "cheia" com espaçamento reduzido) pra dentro do
+      `InfoBanner`/`SourcesFlowDiagram` como componentes React de
+      verdade — nada de HTML solto no projeto.
+- [x] O HTML original usava classes Tailwind tipo `bg-brand-600`,
+      `ring-brand-50` etc. — cor `brand-*` que não existe no
+      `tailwind.config.js` deste projeto (teria ficado sem estilo
+      nenhum, silenciosamente). Troquei tudo pra `blue-*`, a cor de
+      marca que o resto do site já usa.
+- [x] **Bug do ícone do Facebook corrigido**: o HTML do Gemini usava
+      `<i data-lucide="facebook">` (o sistema de ícones do Lucide via
+      CDN, que só funciona chamando `lucide.createIcons()` depois que
+      a página carrega). Isso não existe em React — por isso o ícone
+      saía em branco. Troquei pelo componente de verdade,
+      `<Facebook />` do `lucide-react`, que o projeto já usa em outro
+      lugar.
+- [x] **Texto trocado** (a pedido): "Novas oportunidades todos os
+      dias, incluindo vagas exclusivas." virou "Agora você não perde
+      mais tempo navegando pelo Facebook — já está tudo aqui,
+      atualizado diariamente." — com "atualizado diariamente" em
+      azul/negrito pra dar destaque (em vez de caixa alta, pra ficar
+      no padrão visual do resto do banner).
+- [x] Layout: Facebook + Empreiteiras à esquerda, hub "NihonVagas.jp
+      · HUB CENTRAL" no meio, Sites Japão + Exclusivas à direita,
+      linhas tracejadas animadas conectando cada fonte ao hub (só em
+      telas ≥640px — no celular os cards ficam em 2 pares empilhados,
+      sem linha, pra não poluir a tela pequena). Cabeçalho ganhou o
+      "N" com selo verde pulsando (`animate-ping`) no canto, estilo
+      do HTML de referência. Rodapé "Sem cadastro/Um toque/Fale
+      direto" manteve os 3 ícones, texto atualizado igual ao
+      screenshot mandado.
+- Testado com o pipeline real do projeto (troca temporária do
+  `main.jsx`, restaurado depois — mesmo processo da v2.6.22) em duas
+  larguras: desktop (~1000px, batendo com o screenshot que o usuário
+  mandou) e mobile (390px, largura real do container do app). Nos
+  dois, ícone do Facebook aparece certo, texto novo está lá, hub
+  central e linhas renderizam como esperado. `npm run build` limpo.

@@ -4,77 +4,79 @@
 // ---------------------------------------------------------------
 
 import { useState, useRef } from "react";
-import { UserX, MousePointerClick, MessageCircle, Globe, Building2, Facebook, Star, Users, Heart, Megaphone, Loader2, ImagePlus } from "lucide-react";
+import { UserX, MousePointerClick, MessageCircle, Globe, Building2, Facebook, Sparkles, Users, Heart, Megaphone, Loader2, ImagePlus } from "lucide-react";
 import { resizeImageFile } from "../utils/misc.js";
 
-// Fontes de vagas exibidas no diagrama "tudo converge pro NihonVagas"
-// abaixo. Coordenadas em um viewBox fixo de 400x230, espelhadas em %
-// pros ícones (posicionados em HTML) baterem exatamente com onde a
-// linha do SVG chega.
-const FLOW_NODES = [
-  { id: "facebook", icon: Facebook, label: "Facebook", sub: "dezenas de comunidades", x: 60, y: 46, iconClass: "fill-blue-600 text-blue-600", ring: "ring-blue-100" },
-  { id: "sites", icon: Globe, label: "Sites de emprego", x: 340, y: 46, iconClass: "text-slate-500", ring: "ring-slate-100" },
-  { id: "empreiteira", icon: Building2, label: "Empreiteira", x: 60, y: 184, iconClass: "text-slate-500", ring: "ring-slate-100" },
-  { id: "exclusivas", icon: Star, label: "Exclusivas", x: 340, y: 184, iconClass: "fill-amber-400 text-amber-400", ring: "ring-amber-100", shine: true },
+// Nós do diagrama "fontes → NihonVagas". Cada um vira um card com
+// ícone + título + subtítulo; os 2 primeiros ficam na coluna
+// esquerda, os 2 últimos na direita (ver FLOW_LEFT/FLOW_RIGHT).
+const FLOW_LEFT = [
+  { id: "facebook", icon: Facebook, title: "Facebook", sub: "dezenas de grupos", iconBg: "bg-blue-50", iconColor: "text-blue-600", border: "border-slate-200/90 hover:border-blue-300" },
+  { id: "empreiteiras", icon: Building2, title: "Empreiteiras", sub: "parcerias diretas", iconBg: "bg-slate-100", iconColor: "text-slate-600", border: "border-slate-200/90 hover:border-blue-300" },
 ];
-const FLOW_VIEWBOX = { w: 400, h: 230 };
-const FLOW_CENTER = { x: 200, y: 115 };
+const FLOW_RIGHT = [
+  { id: "sites", icon: Globe, title: "Sites Japão", sub: "agregados em um só", iconBg: "bg-slate-100", iconColor: "text-slate-600", border: "border-slate-200/90 hover:border-blue-300" },
+  { id: "exclusivas", icon: Sparkles, title: "Exclusivas", sub: "só no NihonVagas", iconBg: "bg-amber-50", iconColor: "text-amber-500", border: "border-amber-200/80 hover:border-amber-400", amber: true },
+];
 
-// Caminho em "cotovelo" (desce/sobe reto, curva suave, entra reto no
-// centro) — mesma ideia visual de diagramas de integração, mas com o
-// fluxo sempre apontando PRA DENTRO (fontes → site), não pra fora.
-function flowPath(node) {
-  const { x, y } = node;
-  const midY = y < FLOW_CENTER.y ? y + 50 : y - 50;
-  const bendX = x < FLOW_CENTER.x ? x + 20 : x - 20;
-  const endX = x < FLOW_CENTER.x ? FLOW_CENTER.x - 28 : FLOW_CENTER.x + 28;
-  return `M ${x} ${y} V ${midY} Q ${x} ${FLOW_CENTER.y} ${bendX} ${FLOW_CENTER.y} H ${endX}`;
+function FlowNodeCard({ icon: Icon, title, sub, iconBg, iconColor, border, amber }) {
+  return (
+    <div className={`group flex w-full max-w-[190px] items-center gap-2.5 rounded-2xl border bg-white p-2.5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md ${border}`}>
+      <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl ${iconBg} ${iconColor}`}>
+        <Icon className="h-4.5 w-4.5" />
+      </div>
+      <div className="min-w-0 leading-tight">
+        <span className={`nv-body block truncate text-[11.5px] font-bold ${amber ? "text-amber-600" : "text-slate-800"}`}>{title}</span>
+        <span className={`nv-body block truncate text-[10px] font-medium ${amber ? "text-amber-500" : "text-slate-400"}`}>{sub}</span>
+      </div>
+    </div>
+  );
 }
 
-// Diagrama "fontes de vagas convergindo pro NihonVagas" — substitui a
-// lista simples: mostra visualmente de onde as vagas vêm e que tudo
-// desagua num lugar só (o site), com linhas animadas fluindo pro
-// centro.
+// Diagrama "fontes de vagas convergindo pro NihonVagas" — Facebook e
+// Empreiteiras à esquerda, Sites Japão e Exclusivas à direita, hub
+// central com o "N" no meio. As linhas conectoras (só em telas sm+)
+// usam um viewBox esticado (preserveAspectRatio="none"), então não
+// precisam bater pixel a pixel com os cards — é só o traço guiando o
+// olho até o hub.
 function SourcesFlowDiagram() {
   return (
-    <div className="relative mx-auto mt-1 w-full max-w-[360px]" style={{ aspectRatio: `${FLOW_VIEWBOX.w} / ${FLOW_VIEWBOX.h}` }}>
-      <svg viewBox={`0 0 ${FLOW_VIEWBOX.w} ${FLOW_VIEWBOX.h}`} className="absolute inset-0 h-full w-full" fill="none">
-        {FLOW_NODES.map((node) => (
-          <g key={node.id}>
-            <path d={flowPath(node)} stroke="#e2e8f0" strokeWidth="1.5" fill="none" />
-            <path d={flowPath(node)} stroke={node.shine ? "#f59e0b" : "#2563eb"} strokeOpacity="0.55" strokeWidth="2" strokeLinecap="round" fill="none" className="nv-flow-line" />
-          </g>
-        ))}
+    <div className="relative py-3">
+      <svg
+        viewBox="0 0 700 90"
+        preserveAspectRatio="none"
+        className="pointer-events-none absolute inset-0 hidden h-full w-full sm:block"
+        fill="none"
+      >
+        <path d="M 175 22 C 260 22, 280 40, 345 45" stroke="#bfdbfe" strokeWidth="1.5" className="nv-flow-line" />
+        <path d="M 175 68 C 260 68, 280 50, 345 45" stroke="#bfdbfe" strokeWidth="1.5" className="nv-flow-line" />
+        <path d="M 525 22 C 440 22, 420 40, 355 45" stroke="#bfdbfe" strokeWidth="1.5" className="nv-flow-line" />
+        <path d="M 525 68 C 440 68, 420 50, 355 45" stroke="#fcd34d" strokeWidth="1.5" className="nv-flow-line" />
       </svg>
 
-      {FLOW_NODES.map(({ id, icon: Icon, label, sub, x, y, iconClass, ring }) => (
-        <div
-          key={id}
-          className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1"
-          style={{ left: `${(x / FLOW_VIEWBOX.w) * 100}%`, top: `${(y / FLOW_VIEWBOX.h) * 100}%` }}
-        >
-          <div className={`flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm ring-1 ${ring}`}>
-            <Icon className={`h-4 w-4 ${iconClass}`} />
-          </div>
-          <p className={`nv-body whitespace-nowrap text-center text-[10px] font-bold leading-tight ${id === "exclusivas" ? "nv-text-shine" : "text-slate-700"}`}>
-            {label}
-          </p>
-          {sub && <p className="nv-body -mt-0.5 max-w-[90px] text-center text-[8.5px] leading-tight text-slate-400">{sub}</p>}
+      <div className="relative z-10 mx-auto grid max-w-2xl grid-cols-1 items-center gap-3 sm:grid-cols-3 sm:gap-3">
+        <div className="flex flex-row justify-center gap-2.5 sm:flex-col sm:items-end">
+          {FLOW_LEFT.map((n) => <FlowNodeCard key={n.id} {...n} />)}
         </div>
-      ))}
 
-      {/* Centro: o site */}
-      <div
-        className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1"
-        style={{ left: `${(FLOW_CENTER.x / FLOW_VIEWBOX.w) * 100}%`, top: `${(FLOW_CENTER.y / FLOW_VIEWBOX.h) * 100}%` }}
-      >
-        <div className="relative flex h-14 w-14 items-center justify-center">
-          <span className="nv-orbit-ping absolute inset-0 rounded-2xl bg-blue-500" />
-          <div className="nv-display relative flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-[20px] font-extrabold text-white shadow-md">
-            N
+        <div className="my-1 flex flex-col items-center justify-center sm:my-0">
+          <div className="relative">
+            <span className="nv-orbit-ping absolute -inset-1.5 rounded-2xl bg-blue-500" />
+            <div className="relative flex flex-col items-center rounded-2xl border border-blue-200 bg-white px-4 py-3 shadow-md">
+              <div className="nv-display mb-1.5 flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-[17px] font-extrabold text-white shadow-inner">
+                N
+              </div>
+              <span className="nv-body whitespace-nowrap text-[11.5px] font-bold text-slate-900">NihonVagas.jp</span>
+              <span className="nv-body mt-1 whitespace-nowrap rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-blue-600">
+                Hub Central
+              </span>
+            </div>
           </div>
         </div>
-        <p className="nv-display whitespace-nowrap text-[10.5px] font-extrabold text-slate-900">NihonVagas.jp</p>
+
+        <div className="flex flex-row justify-center gap-2.5 sm:flex-col sm:items-start">
+          {FLOW_RIGHT.map((n) => <FlowNodeCard key={n.id} {...n} />)}
+        </div>
       </div>
     </div>
   );
@@ -91,19 +93,29 @@ export function InfoBanner({ jobs = [] }) {
 
   return (
     <div className="nv-rise rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-blue-600 shadow-sm">
-          <span className="h-3 w-3 animate-pulse rounded-full bg-white" />
+      <div className="flex items-start gap-3">
+        <div className="relative mt-0.5 flex-shrink-0">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-700 via-blue-600 to-blue-500 text-white shadow-md ring-4 ring-blue-50">
+            <span className="nv-display text-[16px] font-extrabold">N</span>
+          </div>
+          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
+          </span>
         </div>
-        <h3 className="nv-display text-[17px] font-extrabold leading-tight text-slate-900">
-          <span className="text-slate-900">{vagasRecentes}</span> <span className="text-blue-600">vagas adicionadas nos últimos 7 dias</span>
-        </h3>
+        <div>
+          <h3 className="nv-display text-[17px] font-extrabold leading-tight text-slate-900">
+            <span className="text-slate-900">{vagasRecentes}</span> <span className="text-blue-600">vagas adicionadas</span> nos últimos 7 dias
+          </h3>
+          <p className="nv-body mt-1 text-[12px] leading-snug text-slate-500">
+            Agora você não perde mais tempo navegando pelo Facebook — já está tudo aqui, <span className="font-semibold text-blue-600">atualizado diariamente</span>.
+          </p>
+        </div>
       </div>
-      <p className="nv-body mt-1.5 text-[12px] text-slate-500">
-        Novas oportunidades todos os dias, incluindo <span className="font-semibold text-blue-600">vagas exclusivas</span>.
-      </p>
 
+      <div className="my-4 border-t border-slate-100" />
       <SourcesFlowDiagram />
+      <div className="mb-1 border-t border-slate-100" />
 
       <div className="mt-4 grid grid-cols-3 divide-x divide-slate-100 text-center">
         <div className="px-1.5">
@@ -111,23 +123,23 @@ export function InfoBanner({ jobs = [] }) {
             <UserX className="h-5 w-5 text-blue-600" />
           </div>
           <p className="nv-body text-[11px] font-bold leading-tight text-slate-900">Sem cadastro</p>
-          <p className="nv-body mt-0.5 text-[10px] leading-tight text-slate-500">Nada de criar conta ou preencher dados.</p>
+          <p className="nv-body mt-0.5 text-[10px] leading-tight text-slate-500">Nada de criar conta ou preencher dados cadastrais longos.</p>
         </div>
         <div className="px-1.5">
           <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
             <MousePointerClick className="h-5 w-5 text-blue-600" />
           </div>
           <p className="nv-body text-[11px] font-bold leading-tight text-slate-900">Um toque</p>
-          <p className="nv-body mt-0.5 text-[10px] leading-tight text-slate-500">Toque no botão e entre em contato.</p>
+          <p className="nv-body mt-0.5 text-[10px] leading-tight text-slate-500">Toque no botão e inicie o contato instantaneamente via WhatsApp.</p>
         </div>
         <div className="px-1.5">
           <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
             <MessageCircle className="h-5 w-5 text-blue-600" />
           </div>
           <p className="nv-body text-[11px] font-bold leading-tight text-slate-900">
-            Fale direto com o <span className="text-blue-600">担当者 (tantousha)</span>
+            Fale com o <span className="text-blue-600">担当者 (tantousha)</span>
           </p>
-          <p className="nv-body mt-0.5 text-[10px] leading-tight text-slate-500">Você fala diretamente com o responsável pela vaga.</p>
+          <p className="nv-body mt-0.5 text-[10px] leading-tight text-slate-500">Converse diretamente com o responsável real por contratar na vaga.</p>
         </div>
       </div>
     </div>
