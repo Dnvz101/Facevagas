@@ -911,3 +911,96 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   mandou) e mobile (390px, largura real do container do app). Nos
   dois, ícone do Facebook aparece certo, texto novo está lá, hub
   central e linhas renderizam como esperado. `npm run build` limpo.
+## 🟠 v2.6.24 — Vaga sem salário/sem contato: exibição corrigida + bloqueio na publicação + filtro Admin
+- [x] A pedido (print mostrando vagas com "¥0/h" e sem botão de
+      WhatsApp): resolvido em 3 camadas — exibição do que já tá
+      publicado, validação pra não deixar acontecer de novo, e uma
+      forma de achar o que já tá errado no banco.
+- [x] **Exibição** (`JobCard.jsx`, `IndicacaoCard.jsx`): salário
+      `0`/vazio agora mostra "A combinar" em vez de "¥0/h" (inclusive
+      no texto de compartilhar do JobCard). Vaga sem WhatsApp mas com
+      telefone ganhou um botão "Ligar" (`tel:`, ícone `Phone`) que
+      não existia antes. Vaga sem os dois mostra um "Sem contato"
+      discreto em vez de ficar com a área de contato em branco sem
+      explicação nenhuma.
+- [x] **Validação no Publicador Mágico** (`AIPublisher.jsx`): a
+      checagem de campo obrigatório do Salário por hora comparava a
+      STRING do campo (`"0"` conta como "preenchido") — por isso dava
+      pra publicar com salário zerado sem erro nenhum. Agora exige
+      o número resultante ser `> 0`. Adicionado também: exige
+      WhatsApp OU telefone preenchido (pelo menos um) — antes o único
+      campo de contato obrigatório era nenhum. Mensagem de erro nova:
+      "Salário por hora, WhatsApp ou Telefone (pelo menos um)", com
+      os dois campos destacados em vermelho.
+- [x] **Importação em lote** (`JSONImporter.jsx`): a revisão já
+      desmarcava vaga sem título/salário automaticamente (v2.6.19) —
+      agora faz o mesmo pra vaga sem NENHUM contato (nem `whatsapp`
+      nem `telefone` no JSON do scraper), com a mesma etiqueta
+      "⚠️ Sem contato" ao lado de "Sem salário" na lista de revisão.
+- [x] **Painel Admin → Todas as Vagas** (`JobsTable.jsx`): banner
+      amarelo no topo mostrando quantas vagas já publicadas estão
+      incompletas (sem salário e/ou sem contato) — toque nele e já
+      filtra a tabela. Novo filtro "⚠️ Incompletas" no dropdown de
+      status, e cada linha da tabela ganhou etiquetas indicando o
+      motivo exato. Isso não conserta sozinho o que já tá no banco
+      (esse fix é só de código, não mexe nos dados) — mas agora dá
+      pra achar rápido e decidir linha por linha (editar via um novo
+      import, marcar preenchida, ou excluir).
+- Testado com o pipeline real do projeto: harness com 4 vagas
+  simuladas (normal / sem salário / sem WhatsApp+com telefone / sem
+  nada) renderizadas em `JobCard`, `IndicacaoCard` e `JobsTable` de
+  uma vez — os 3 comportamentos batem exatamente com o esperado em
+  cada cenário, incluindo o filtro "Incompletas" filtrando certo (2
+  de 4). Testado também o Publicador Mágico de ponta a ponta: (1)
+  tentativa de publicar com salário "0" e sem contato → bloqueado,
+  com os dois campos em vermelho e a mensagem certa; (2) mesma vaga
+  com salário 1500 e WhatsApp preenchido → publicou normal, confirmado
+  no objeto retornado (`salarioHora: 1500`, `status: "publicado"`).
+  `npm run build` limpo depois de restaurar o `main.jsx` original.
+## 🔴 v2.6.25 — v2.6.24 revertida (regra: vaga sem salário/contato não entra no site) + SQL de limpeza no Supabase
+- [x] Decisão do usuário após ver a v2.6.24: **não** quer vaga sem
+      salário ou sem contato (WhatsApp/telefone) no site de jeito
+      nenhum — "se meu scraper não pegou, não quero no site". Empresa
+      que quiser mesmo assim publica direto pelo próprio painel dela
+      (Área do Cliente), então não precisa de um "modo permissivo" pro
+      candidato ver vaga incompleta.
+- [x] A regra que já existia ANTES da v2.6.24 (import em lote —
+      v2.6.19: vaga sem título/salário entra desmarcada, com aviso) já
+      cumpre esse papel — usuário confirmou que "está ótimo assim",
+      então **revertidos** os 4 arquivos que a v2.6.24 tinha mexido
+      pra além disso:
+      - `JobCard.jsx` e `IndicacaoCard.jsx` — voltou a mostrar "¥0/h"
+        (em vez de "A combinar") e sumir o botão de contato sem
+        aviso nenhum quando não há WhatsApp (sem fallback de
+        "Ligar"/"Sem contato") — exatamente como era na v2.6.23.
+      - `AIPublisher.jsx` — removida a validação extra (bloqueio de
+        salário "0" e exigência de WhatsApp/telefone); voltou aos 3
+        campos obrigatórios originais (Empresa, Cargo, Salário).
+      - `JSONImporter.jsx` — removida a detecção de `semContato`;
+        volta a avisar só sem título e/ou sem salário, como era.
+- [x] **Mantido** (a pedido, era a parte que o usuário gostou): o
+      filtro "⚠️ Incompletas" + banner de aviso + etiquetas por linha
+      no `JobsTable.jsx` (painel Admin → Todas as Vagas) — isso ajuda
+      a achar vaga já publicada com problema, então ficou.
+- [x] Criado `supabase/limpar_vagas_incompletas.sql` — script pra
+      rodar no SQL Editor do Supabase e limpar o banco de uma vez
+      (o código não alcança dado que já está lá). Regra: mesma do
+      filtro do Admin (`salario_hora = 0` OU nem `whatsapp` nem
+      `telefone` preenchidos). Escopo: só vagas com `last_seen_at IS
+      NOT NULL` (ou seja, que vieram do scraper) — vaga publicada
+      direto pela empresa (`last_seen_at IS NULL`) fica de fora de
+      propósito, não é "lixo do scraper". Tem um PASSO 1 (SELECT, só
+      confere) antes do PASSO 2 (DELETE, comentado por padrão — só
+      descomentar depois de conferir a lista do PASSO 1) e uma
+      variante opcional (comentada) pra quem quiser incluir também
+      vaga publicada manualmente.
+- Testado: build de produção deu o CSS **byte-idêntico** em tamanho
+  ao da v2.6.23 (47.17 kB), confirmando que a reversão nos 4 arquivos
+  ficou limpa — nenhum resíduo. Grep confirmou zero ocorrência de
+  `toTelLink`, `telLink`, `semContato`, `salarioZerado`, "A combinar"
+  ou `Phone` (marcadores da v2.6.24) nesses arquivos. Screenshot com 3
+  vagas de teste confirmou visualmente: vaga sem salário voltou a
+  mostrar "¥0/h", vaga sem contato voltou a não mostrar botão nenhum
+  (nem "Ligar" nem "Sem contato") — igual v2.6.23. `JobsTable` com o
+  filtro "Incompletas" continua funcionando igual antes. `npm run
+  build` limpo depois de restaurar o `main.jsx`.

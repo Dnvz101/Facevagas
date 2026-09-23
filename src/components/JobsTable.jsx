@@ -17,8 +17,14 @@ export default function JobsTable({ jobs, onToggleBadge, onDelete, onDeleteMany,
   const [quotaWarning, setQuotaWarning] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [statusFiltro, setStatusFiltro] = useState("todas"); // "todas" | "ativas" | "preenchidas" | "arquivadas"
+  const [statusFiltro, setStatusFiltro] = useState("todas"); // "todas" | "ativas" | "preenchidas" | "arquivadas" | "incompletas"
   const [provinciaFiltro, setProvinciaFiltro] = useState("todas");
+
+  // "Incompleta" = sem salário (0/vazio) OU sem NENHUM jeito de contato
+  // (nem WhatsApp nem telefone) — as duas coisas que a v2.6.24 corrigiu
+  // na hora de PUBLICAR nova vaga, mas que vagas já existentes no banco
+  // (publicadas antes do fix, ou via edição manual) ainda podem ter.
+  const isIncompleta = (j) => !j.salarioHora || (!j.whatsapp && !j.telefone);
 
   const handleBadgeClick = (job, key, label) => {
     const turningOn = !job[key];
@@ -44,6 +50,7 @@ export default function JobsTable({ jobs, onToggleBadge, onDelete, onDeleteMany,
     if (statusFiltro === "ativas" && (j.preenchida || j.arquivada)) return false;
     if (statusFiltro === "preenchidas" && !j.preenchida) return false;
     if (statusFiltro === "arquivadas" && !j.arquivada) return false;
+    if (statusFiltro === "incompletas" && !isIncompleta(j)) return false;
     if (provinciaFiltro !== "todas" && j.provincia !== provinciaFiltro) return false;
     return true;
   });
@@ -112,6 +119,19 @@ export default function JobsTable({ jobs, onToggleBadge, onDelete, onDeleteMany,
           </p>
         )}
 
+        {(() => {
+          const totalIncompletas = jobs.filter(isIncompleta).length;
+          return totalIncompletas > 0 && statusFiltro !== "incompletas" ? (
+            <button
+              onClick={() => setStatusFiltro("incompletas")}
+              className="nv-body mt-2 flex w-full items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-left text-[11.5px] font-medium text-amber-700 hover:bg-amber-100"
+            >
+              <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+              {totalIncompletas} vaga{totalIncompletas === 1 ? "" : "s"} sem salário e/ou sem contato (WhatsApp/telefone) — toque pra ver
+            </button>
+          ) : null;
+        })()}
+
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <input
             value={searchTerm}
@@ -128,6 +148,7 @@ export default function JobsTable({ jobs, onToggleBadge, onDelete, onDeleteMany,
             <option value="ativas">Ativas</option>
             <option value="preenchidas">Preenchidas</option>
             <option value="arquivadas">Arquivadas</option>
+            <option value="incompletas">⚠️ Incompletas (sem salário/contato)</option>
           </select>
           <select
             value={provinciaFiltro}
@@ -182,6 +203,16 @@ export default function JobsTable({ jobs, onToggleBadge, onDelete, onDeleteMany,
                   <p className="nv-body flex items-center gap-1 text-[11px] text-slate-400">
                     {j.empresa} {j.seloVerificado && <VerificadoBadge />}
                   </p>
+                  {isIncompleta(j) && (
+                    <p className="nv-body mt-0.5 flex flex-wrap items-center gap-1">
+                      {!j.salarioHora && (
+                        <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">⚠️ Sem salário</span>
+                      )}
+                      {!j.whatsapp && !j.telefone && (
+                        <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">⚠️ Sem contato</span>
+                      )}
+                    </p>
+                  )}
                 </td>
                 <td className="px-4 py-3 nv-body font-semibold text-slate-700">{j.clicks}</td>
                 <td className="px-4 py-3">
