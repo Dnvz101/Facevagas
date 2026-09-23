@@ -1004,3 +1004,33 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   (nem "Ligar" nem "Sem contato") — igual v2.6.23. `JobsTable` com o
   filtro "Incompletas" continua funcionando igual antes. `npm run
   build` limpo depois de restaurar o `main.jsx`.
+## 🔵 v2.6.26 — Linhas animadas do banner agora aparecem no mobile também
+- [x] A pedido: as linhas conectoras do diagrama "fontes → NihonVagas"
+      (`BannerCard.jsx` → `SourcesFlowDiagram`) ficavam escondidas em
+      telas <640px desde a v2.6.23 (`hidden sm:block`) — o layout
+      empilhado do mobile (par de cards / hub / par de cards) não
+      tinha como reaproveitar as mesmas curvas do desktop, que
+      dependiam de tudo estar lado a lado na mesma linha.
+- [x] Virou dois blocos JSX de verdade (não só classes responsivas
+      escondendo/mostrando o mesmo SVG): o de telas sm+ ficou
+      idêntico ao de antes (curvas absolutas por cima da grade de 3
+      colunas); o novo, só para <640px, insere um `MobileConnector` —
+      um SVG pequeno e esticável (`preserveAspectRatio="none"`) com
+      duas linhas convergindo (fileira de cima → hub) ou divergindo
+      (hub → fileira de baixo) — direto no fluxo do documento, entre
+      as fileiras empilhadas, sem precisar posicionar nada em
+      coordenada absoluta.
+- [x] Achado no primeiro teste: o anel pulsante do hub
+      (`nv-orbit-ping`) quase engolia as linhas de tão perto —
+      reduzido de `-inset-1.5` pra `-inset-1`, e o conector ganhou
+      mais altura (`h-6`, viewBox 32 em vez de 28) e traço mais grosso
+      (`strokeWidth` 2 → 2.5) pra sobrar visível.
+- [x] Mesma paleta de antes: linhas azuis pras 3 fontes normais,
+      dourada pra "Exclusivas" — e a mesma classe de animação
+      (`nv-flow-line`) que já existia, sem CSS novo.
+- Testado com o pipeline real do projeto em mobile (390px) — linhas
+  aparecem nitidamente entre as fileiras, confirmado com 2 screenshots
+  que o traço tracejado se move (animação rodando). Desktop (1000px)
+  reconferido lado a lado — ficou pixel a pixel igual ao de antes,
+  nenhuma regressão. `npm run build` limpo depois de restaurar o
+  `main.jsx`.

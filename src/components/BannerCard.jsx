@@ -33,48 +33,86 @@ function FlowNodeCard({ icon: Icon, title, sub, iconBg, iconColor, border, amber
   );
 }
 
+// Conector vertical curto pro layout empilhado (mobile): duas linhas
+// convergindo (fileira → hub) ou divergindo (hub → fileira) num
+// viewBox pequeno e esticável — não precisa bater pixel a pixel com
+// os cards, só guiar o olho de uma fileira até a outra.
+function MobileConnector({ direction, colors }) {
+  const [colorLeft, colorRight] = colors;
+  const paths =
+    direction === "in"
+      ? ["M20,0 C20,18 70,27 100,32", "M180,0 C180,18 130,27 100,32"]
+      : ["M100,0 C100,5 70,14 20,32", "M100,0 C100,5 130,14 180,32"];
+  return (
+    <svg viewBox="0 0 200 32" preserveAspectRatio="none" className="mx-auto my-1 h-6 w-36" fill="none">
+      <path d={paths[0]} stroke={colorLeft} strokeWidth="2.5" strokeLinecap="round" className="nv-flow-line" />
+      <path d={paths[1]} stroke={colorRight} strokeWidth="2.5" strokeLinecap="round" className="nv-flow-line" />
+    </svg>
+  );
+}
+
 // Diagrama "fontes de vagas convergindo pro NihonVagas" — Facebook e
 // Empreiteiras à esquerda, Sites Japão e Exclusivas à direita, hub
-// central com o "N" no meio. As linhas conectoras (só em telas sm+)
-// usam um viewBox esticado (preserveAspectRatio="none"), então não
-// precisam bater pixel a pixel com os cards — é só o traço guiando o
-// olho até o hub.
+// central com o "N" no meio.
+//
+// Dois layouts de verdade, não só classes responsivas: em telas sm+
+// as linhas são curvas absolutas por cima de uma grade de 3 colunas
+// (viewBox esticado, preserveAspectRatio="none"); no mobile os cards
+// empilham em 3 fileiras (par esquerdo / hub / par direito) e cada
+// conector vertical mora no próprio fluxo do documento, no espaço
+// entre as fileiras — por isso são dois blocos JSX separados
+// (hidden sm:block / sm:hidden) em vez de só esconder um SVG.
 function SourcesFlowDiagram() {
+  const hub = (
+    <div className="relative">
+      <span className="nv-orbit-ping absolute -inset-1 rounded-2xl bg-blue-500" />
+      <div className="relative flex flex-col items-center rounded-2xl border border-blue-200 bg-white px-4 py-3 shadow-md">
+        <div className="nv-display mb-1.5 flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-[17px] font-extrabold text-white shadow-inner">
+          N
+        </div>
+        <span className="nv-body whitespace-nowrap text-[11.5px] font-bold text-slate-900">NihonVagas.jp</span>
+        <span className="nv-body mt-1 whitespace-nowrap rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-blue-600">
+          Hub Central
+        </span>
+      </div>
+    </div>
+  );
+
   return (
     <div className="relative py-3">
-      <svg
-        viewBox="0 0 700 90"
-        preserveAspectRatio="none"
-        className="pointer-events-none absolute inset-0 hidden h-full w-full sm:block"
-        fill="none"
-      >
-        <path d="M 175 22 C 260 22, 280 40, 345 45" stroke="#bfdbfe" strokeWidth="1.5" className="nv-flow-line" />
-        <path d="M 175 68 C 260 68, 280 50, 345 45" stroke="#bfdbfe" strokeWidth="1.5" className="nv-flow-line" />
-        <path d="M 525 22 C 440 22, 420 40, 355 45" stroke="#bfdbfe" strokeWidth="1.5" className="nv-flow-line" />
-        <path d="M 525 68 C 440 68, 420 50, 355 45" stroke="#fcd34d" strokeWidth="1.5" className="nv-flow-line" />
-      </svg>
-
-      <div className="relative z-10 mx-auto grid max-w-2xl grid-cols-1 items-center gap-3 sm:grid-cols-3 sm:gap-3">
-        <div className="flex flex-row justify-center gap-2.5 sm:flex-col sm:items-end">
-          {FLOW_LEFT.map((n) => <FlowNodeCard key={n.id} {...n} />)}
-        </div>
-
-        <div className="my-1 flex flex-col items-center justify-center sm:my-0">
-          <div className="relative">
-            <span className="nv-orbit-ping absolute -inset-1.5 rounded-2xl bg-blue-500" />
-            <div className="relative flex flex-col items-center rounded-2xl border border-blue-200 bg-white px-4 py-3 shadow-md">
-              <div className="nv-display mb-1.5 flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-[17px] font-extrabold text-white shadow-inner">
-                N
-              </div>
-              <span className="nv-body whitespace-nowrap text-[11.5px] font-bold text-slate-900">NihonVagas.jp</span>
-              <span className="nv-body mt-1 whitespace-nowrap rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-blue-600">
-                Hub Central
-              </span>
-            </div>
+      {/* sm+ : 3 colunas lado a lado, linhas curvas absolutas por cima */}
+      <div className="relative hidden sm:block">
+        <svg
+          viewBox="0 0 700 90"
+          preserveAspectRatio="none"
+          className="pointer-events-none absolute inset-0 h-full w-full"
+          fill="none"
+        >
+          <path d="M 175 22 C 260 22, 280 40, 345 45" stroke="#bfdbfe" strokeWidth="1.5" className="nv-flow-line" />
+          <path d="M 175 68 C 260 68, 280 50, 345 45" stroke="#bfdbfe" strokeWidth="1.5" className="nv-flow-line" />
+          <path d="M 525 22 C 440 22, 420 40, 355 45" stroke="#bfdbfe" strokeWidth="1.5" className="nv-flow-line" />
+          <path d="M 525 68 C 440 68, 420 50, 355 45" stroke="#fcd34d" strokeWidth="1.5" className="nv-flow-line" />
+        </svg>
+        <div className="relative z-10 mx-auto grid max-w-2xl grid-cols-3 items-center gap-3">
+          <div className="flex flex-col items-end gap-2.5">
+            {FLOW_LEFT.map((n) => <FlowNodeCard key={n.id} {...n} />)}
+          </div>
+          <div className="flex flex-col items-center justify-center">{hub}</div>
+          <div className="flex flex-col items-start gap-2.5">
+            {FLOW_RIGHT.map((n) => <FlowNodeCard key={n.id} {...n} />)}
           </div>
         </div>
+      </div>
 
-        <div className="flex flex-row justify-center gap-2.5 sm:flex-col sm:items-start">
+      {/* <sm : empilhado (par / hub / par), conector vertical entre cada fileira */}
+      <div className="sm:hidden">
+        <div className="flex flex-row justify-center gap-2.5">
+          {FLOW_LEFT.map((n) => <FlowNodeCard key={n.id} {...n} />)}
+        </div>
+        <MobileConnector direction="in" colors={["#bfdbfe", "#bfdbfe"]} />
+        <div className="flex justify-center">{hub}</div>
+        <MobileConnector direction="out" colors={["#bfdbfe", "#fcd34d"]} />
+        <div className="flex flex-row justify-center gap-2.5">
           {FLOW_RIGHT.map((n) => <FlowNodeCard key={n.id} {...n} />)}
         </div>
       </div>
