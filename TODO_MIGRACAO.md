@@ -1034,3 +1034,38 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   reconferido lado a lado — ficou pixel a pixel igual ao de antes,
   nenhuma regressão. `npm run build` limpo depois de restaurar o
   `main.jsx`.
+## 🟢 v2.6.27 — Banner redesenhado de novo, dessa vez a partir de JSX de verdade do Gemini (estilo mais compacto)
+- [x] O usuário mandou uma nova versão do Gemini pro banner — dessa
+      vez em **React/JSX de verdade** (componente `.jsx` com import de
+      `lucide-react`), não HTML cru como da vez passada. Isso já
+      evitou os 2 problemas da v2.6.23 (cor `brand-*` inexistente,
+      ícone do Facebook quebrado via `data-lucide`) — o código já veio
+      compatível com o stack do projeto.
+- [x] Portado pro `SourcesFlowDiagram`/`InfoBanner` (`BannerCard.jsx`),
+      mantendo o que já era nosso: contagem real de vagas
+      (`vagasRecentes`, não um número fixo), texto do subtítulo
+      ("Agora você não perde mais tempo navegando pelo Facebook...",
+      da v2.6.24) e as linhas com animação de fluxo (`nv-flow-line`)
+      em vez do traço estático do Gemini — o resto (formato compacto,
+      hub como pill horizontal em vez de card vertical, nós em pill
+      de uma linha só, ícones `UserCheck`/`Zap`/`MessageCircle` no
+      rodapé, layout do rodapé em pares ícone+texto alinhados à
+      esquerda em vez de colunas centralizadas) seguiu o novo design
+      à risca.
+- [x] Facebook ganhou o tratamento exato do Gemini: círculo azul
+      sólido (`#1877f2`) com o ícone em branco, em vez do ícone azul
+      sobre fundo claro que usávamos antes — mais parecido com o
+      logo de verdade da rede.
+- [x] `MobileConnector` (criado na v2.6.26) ajustado pro hub ter virado
+      um pill mais baixo (era um card quadrado) — reduzida a altura do
+      conector e o `nv-orbit-ping` (anel pulsante) saiu, já que o hub
+      não é mais um quadrado centralizado que pedia esse efeito.
+- [x] Textos do rodapé encurtados pra caber na linha única do novo
+      layout compacto (ex.: "Nada de criar conta ou preencher dados
+      cadastrais longos." → "Nada de formulários longos"), seguindo o
+      texto que o Gemini sugeriu.
+- Testado com o pipeline real do projeto: desktop (1000px) e mobile
+  (390px, full page), incluindo 2 capturas espaçadas confirmando que
+  o traço das linhas ainda está animando (não é só decoração
+  estática). Visual bateu bem próximo da referência nos dois
+  tamanhos. `npm run build` limpo depois de restaurar o `main.jsx`.
