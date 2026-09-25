@@ -1120,3 +1120,32 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   dá pra confirmar a entrega de fato depois de configurar a variável
   na Vercel e testar com um cadastro real (ou de teste) no site já
   publicado.
+## 🔴 v2.6.30 — Fix: notificação do ntfy nunca chegava (faltava aguardar o fetch)
+- [x] Usuário confirmou pelos logs da Vercel: `/api/partner-signup`
+      respondia 200 (sucesso) normalmente, mas a notificação no ntfy
+      nunca chegava no celular — mesmo com `NTFY_TOPIC` configurado
+      certo, tópico igual no app, redeploy feito.
+- [x] Causa: o disparo pro ntfy.sh na v2.6.29 era "fire-and-forget"
+      (sem `await`), pensando que isso era mais seguro pro cadastro
+      nunca travar. Só que numa Serverless Function da Vercel é o
+      contrário — assim que `res.json(...)` é chamado, o runtime pode
+      congelar/encerrar o processo, cortando qualquer `fetch` que
+      ainda esteja em voo sem `await` segurando ele. É exatamente o
+      padrão do sintoma: sucesso no log, nada chega de verdade.
+- [x] Corrigido com `await` + `AbortController` (timeout de 4s) +
+      `try/catch` — agora a função espera o ntfy responder (ou
+      desiste em até 4s se ele travar) antes de mandar a resposta pro
+      navegador. Continua não bloqueando o cadastro em si: se o ntfy
+      falhar ou demorar, o `catch` engole o erro e o cadastro segue
+      normal, só sem notificação dessa vez.
+- [x] Encontrado de bônus (não mexido ainda): logs mostraram um
+      `POST /api/db-write` retornando 403 uns 3s depois de um cadastro
+      de empresa — não achei o que dispara essa chamada em
+      `handlePartnerSignup`, deve vir de algum efeito ao entrar na
+      aba "Minha Empresa" logo em seguida. Não relacionado ao fix
+      desta versão; fica registrado pra investigar se o usuário pedir.
+- Testado com dois cenários de `fetch` mockado: (1) ntfy responde OK
+  em 100ms — confirmado que a função espera terminar antes de seguir;
+  (2) ntfy "trava" (nunca responde) — confirmado que o
+  `AbortController` corta em ~500ms (no teste; 4s em produção) e o
+  erro é capturado sem derrubar o cadastro. `npm run build` limpo.

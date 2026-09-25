@@ -120,15 +120,29 @@ export default async function handler(req, res) {
       seloVerificado: !!row.selo_verificado,
     };
 
-    // Avisa o celular do Leandro via ntfy.sh (app grátis, sem conta) —
-    // dispara e não espera resposta: se o ntfy estiver fora do ar, o
-    // cadastro da empresa NUNCA pode falhar por causa disso.
+    // Avisa o celular do Leandro via ntfy.sh (app grátis, sem conta).
+    // Precisa de AWAIT aqui: numa Serverless Function da Vercel, o
+    // processo pode ser congelado logo depois que a resposta é
+    // enviada — um fetch "dispara e esquece" (sem await) corria o
+    // risco de nunca terminar de sair, mesmo a função respondendo
+    // 200 com sucesso (foi exatamente o que aconteceu: log mostrava
+    // sucesso, mas a notificação nunca chegava). O timeout de 4s e o
+    // try/catch garantem que, mesmo assim, o cadastro da empresa
+    // nunca fica mais lento nem falha por causa do ntfy.
     if (process.env.NTFY_TOPIC) {
-      fetch(`https://ntfy.sh/${process.env.NTFY_TOPIC}`, {
-        method: "POST",
-        headers: { Title: "Nova empresa no NihonVagas", Tags: "moneybag" },
-        body: `${row.name} (${tipo}) acabou de se cadastrar — ${emailLower}`,
-      }).catch((err) => console.error("partner-signup: falha ao notificar ntfy (não bloqueia o cadastro):", err));
+      try {
+        const ctrl = new AbortController();
+        const timeout = setTimeout(() => ctrl.abort(), 4000);
+        await fetch(`https://ntfy.sh/${process.env.NTFY_TOPIC}`, {
+          method: "POST",
+          headers: { Title: "Nova empresa no NihonVagas", Tags: "moneybag" },
+          body: `${row.name} (${tipo}) acabou de se cadastrar — ${emailLower}`,
+          signal: ctrl.signal,
+        });
+        clearTimeout(timeout);
+      } catch (err) {
+        console.error("partner-signup: falha ao notificar ntfy (não bloqueia o cadastro):", err);
+      }
     }
 
     return res.status(200).json({ success: true, token, partner, listing });
