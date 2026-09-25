@@ -45,7 +45,7 @@ function MobileConnector({ direction, colors }) {
   const [colorLeft, colorRight] = colors;
   const paths =
     direction === "in"
-      ? ["M20,0 C20,10 70,16 100,20", "M180,0 C180,10 130,16 100,20"]
+      ? ["M20,0 C70,10 100,16 100,20", "M180,0 C130,10 100,16 100,20"]
       : ["M100,0 C100,4 70,10 20,20", "M100,0 C100,4 130,10 180,20"];
   return (
     <svg viewBox="0 0 200 20" preserveAspectRatio="none" className="mx-auto my-0.5 h-4 w-32" fill="none">

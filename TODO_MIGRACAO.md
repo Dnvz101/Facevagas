@@ -1250,3 +1250,24 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   `rounded-full` no container não é clipado de forma confiável pelo
   html2canvas) — trocado por arredondamento direto em cada metade da
   barra; reconferido no PNG final, saiu limpo. `npm run build` limpo.
+## 🟡 v2.6.34 — Fix visual: linha de cima do banner mobile formava um "círculo" em vez de convergir
+- [x] Usuário mandou print: no banner mobile, as 2 linhas conectando
+      Facebook/Empreiteiras até o hub central pareciam formar um
+      laço/círculo em vez de convergir num ponto limpo — enquanto as
+      linhas de baixo (hub → Sites/Exclusivas) estavam certinhas.
+- [x] Causa, confirmada renderizando as curvas isoladas antes de
+      mexer: os pontos de controle da curva "in" (fileira de cima →
+      hub) não eram o espelho correto da curva "out" (hub → fileira
+      de baixo) que já funcionava. Resultado: em vez de um "V"
+      convergindo num ápice, a curva de cima desenhava uma "tigela"
+      larga e achatada perto do hub — com a animação de traço
+      tracejado por cima, isso lê visualmente como um círculo/laço.
+- [x] Corrigido em `MobileConnector` (`BannerCard.jsx`) espelhando de
+      verdade a curva que já funcionava (refletida no eixo vertical),
+      em vez de uma curva desenhada solta por conta própria.
+- Testado renderizando as duas versões da curva isoladas (SVG puro,
+  antes de mexer no projeto) pra confirmar visualmente a causa e a
+  correção antes de aplicar — só depois testado no banner de verdade,
+  mobile (390px), pipeline real do projeto: as duas linhas de cima
+  agora convergem num ponto só, igual as de baixo. `npm run build`
+  limpo.
