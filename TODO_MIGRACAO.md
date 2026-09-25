@@ -1209,3 +1209,44 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   vaga.jpg` sai copiado pra `dist/` no build de produção (assets em
   `public/` são copiados automaticamente pelo Vite). `npm run build`
   limpo.
+## 🔵 v2.6.33 — Relatório de Desempenho por empresa (imagem pra mandar por WhatsApp)
+- [x] Novo botão (ícone de gráfico, azul) em cada card de empresa no
+      Admin → Parceiros & Selos — só aparece pra empresa que já tem
+      pelo menos 1 vaga publicada. Abre uma PRÉ-VISUALIZAÇÃO de verdade
+      na tela (exatamente o que vira a imagem, renderizado com React —
+      não é mockup) antes de gerar qualquer arquivo, como pedido.
+- [x] Todo número é dado real, calculado na hora a partir do
+      `job.dailyStats` (histórico diário `{"YYYY-MM-DD": {views,
+      clicks}}` que já existe desde antes) — nada estimado nem
+      inventado:
+      - Visualizações e cliques no WhatsApp do período atual (mês
+        corrente até hoje), com crescimento % vs. o mesmo número de
+        dias imediatamente anterior.
+      - Vagas ativas (nem preenchida, nem arquivada).
+      - Taxa de contato (cliques ÷ visualizações do período).
+      - "O poder de cada selo": Destaque (mais visualizações),
+        Recomendado (mais cliques) e Verificado (mais taxa de
+        contato) — comparando a MÉDIA das vagas com vs. sem aquele
+        selo, no site inteiro (não só dessa empresa, já que é uma
+        estatística de plataforma). Cada linha só aparece se tiver
+        pelo menos 3 vagas em cada grupo (com/sem) — evita mostrar um
+        "10x mais" bobo tirado de uma amostra de 1 vaga.
+- [x] "Baixar imagem" usa `html2canvas` (nova dependência) pra tirar
+      um print de alta resolução (escala 3x) exatamente do card
+      pré-visualizado, e baixa como PNG nomeado com o nome da empresa.
+      Botão extra "Abrir WhatsApp de [Nome]" já abre a conversa certa
+      (usa telefone JP ou BR da empresa) com uma mensagem pronta —
+      não dá pra anexar imagem via link do WhatsApp, então o aviso na
+      tela já deixa claro que é baixar primeiro e anexar manual.
+- Testado com dados fabricados mas matematicamente verificados à mão:
+  período com 450 views/45 cliques (soma de 2 vagas, dailyStats
+  batendo em datas reais de set/ago) deu certinho ↑80%/↑200% de
+  crescimento e 10.0% de taxa de contato — todos os números batendo
+  com a conta manual. Testado o clique em "Baixar imagem" de ponta a
+  ponta (Playwright capturando o download de verdade): PNG real de
+  1344×2106px, 301KB — leve o bastante pro WhatsApp. **Achado e
+  corrigido durante o teste**: a barra "Sem X% / Com Y%" tinha uma
+  falha visual na borda entre os dois blocos (`overflow-hidden` +
+  `rounded-full` no container não é clipado de forma confiável pelo
+  html2canvas) — trocado por arredondamento direto em cada metade da
+  barra; reconferido no PNG final, saiu limpo. `npm run build` limpo.

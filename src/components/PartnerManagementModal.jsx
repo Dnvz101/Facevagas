@@ -5,9 +5,10 @@
 // ---------------------------------------------------------------
 
 import { useState, useMemo } from "react";
-import { Users, X, BadgeCheck, Settings, Trash2, MessageCircle, Eye, Heart } from "lucide-react";
+import { Users, X, BadgeCheck, Settings, Trash2, MessageCircle, Eye, Heart, BarChart3 } from "lucide-react";
 import { PARTNER_TYPES, partnerTypeLabel, partnerTypeEmoji } from "../config/partnerTypes.js";
 import { PLANOS_ORDER } from "../config/plans.js";
+import RelatorioDesempenho from "./RelatorioDesempenho.jsx";
 
 // Selo controlável + qual campo de cota do plano ele consome — usado
 // só pra montar o resumo "usando X de Y" aqui embaixo. Fonte separada
@@ -23,6 +24,7 @@ export default function PartnerManagementModal({ isOpen, onClose, registeredPart
   const [filterTipo, setFilterTipo] = useState("todos"); // "todos" | "empreiteira" | "prestador" | "loja"
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
+  const [relatorioPartner, setRelatorioPartner] = useState(null); // parceiro com o modal de Relatório aberto, ou null
 
   const filtered = useMemo(
     () => (filterTipo === "todos" ? registeredPartners : registeredPartners.filter((p) => p.tipo === filterTipo)),
@@ -140,6 +142,15 @@ export default function PartnerManagementModal({ isOpen, onClose, registeredPart
                         {p.phonePt && <p className="nv-body text-[11px] text-slate-400">🇧🇷 {p.phonePt}</p>}
                       </div>
                       <div className="flex flex-shrink-0 items-center gap-1">
+                        {resumo && resumo.totalVagas > 0 && (
+                          <button
+                            onClick={() => setRelatorioPartner(p)}
+                            title="Gerar relatório de desempenho"
+                            className="flex h-7 w-7 items-center justify-center rounded-full text-blue-500 hover:bg-blue-50"
+                          >
+                            <BarChart3 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                         {editingId !== p.id && (
                           <button
                             onClick={() => startEditing(p)}
@@ -218,6 +229,9 @@ export default function PartnerManagementModal({ isOpen, onClose, registeredPart
           )}
         </div>
       </div>
+      {relatorioPartner && (
+        <RelatorioDesempenho partner={relatorioPartner} jobs={jobs} onClose={() => setRelatorioPartner(null)} />
+      )}
     </div>
   );
 }
