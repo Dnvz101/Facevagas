@@ -533,17 +533,27 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
-  // Persiste registeredPartners a cada mudança (cadastro novo, selo
-  // verificado, troca de plano...) — só depois que dbStatus já é
-  // "connected" (ou seja, a carga inicial já rodou e já trouxe o que
-  // existia salvo). Sem esse gate, o efeito dispararia já na montagem
-  // com o valor padrão (initialRegisteredPartners) e sobrescreveria
-  // qualquer parceiro real que já estivesse salvo, antes mesmo do fetch
-  // inicial terminar.
+  // Persiste registeredPartners a cada mudança feita pelo ADMIN (selo
+  // verificado, troca de plano, renomear, excluir) — só depois que
+  // dbStatus já é "connected" (ou seja, a carga inicial já rodou e já
+  // trouxe o que existia salvo). Sem esse gate, o efeito dispararia já
+  // na montagem com o valor padrão (initialRegisteredPartners) e
+  // sobrescreveria qualquer parceiro real que já estivesse salvo,
+  // antes mesmo do fetch inicial terminar.
+  //
+  // isSuperAdmin no gate É de propósito, não só otimização: a tabela
+  // "parceiros" só aceita escrita de sessão Admin (api/db-write.js) —
+  // uma empresa não pode se auto-promover editando o próprio registro.
+  // Sem esse gate, o efeito também disparava (e falhava com 403) toda
+  // vez que uma empresa NOVA se cadastrava sozinha, porque nesse
+  // momento só existe o token de parceiro dela, não o de admin — e
+  // essa gravação nem era necessária, já que o cadastro em si já
+  // persiste tudo certinho no servidor (partner-signup.js, com a
+  // service role key).
   useEffect(() => {
-    if (dbStatus !== "connected") return;
+    if (dbStatus !== "connected" || !isSuperAdmin) return;
     upsertPartnersInDB(registeredPartners).catch((err) => console.error("Falha ao salvar parceiros:", err));
-  }, [registeredPartners, dbStatus]);
+  }, [registeredPartners, dbStatus, isSuperAdmin]);
 
   // Relógio dos ciclos automáticos (🔥 Destaque = 7 dias, 🆕 Nova Vaga =
   // 48h, + arquivamento de vaga "sumida" do scraper) — confere

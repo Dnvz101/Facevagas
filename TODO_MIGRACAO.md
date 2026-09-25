@@ -1149,3 +1149,40 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   (2) ntfy "trava" (nunca responde) — confirmado que o
   `AbortController` corta em ~500ms (no teste; 4s em produção) e o
   erro é capturado sem derrubar o cadastro. `npm run build` limpo.
+## 🟢 v2.6.31 — Fix: 403 no db-write toda vez que uma empresa se cadastra sozinha
+- [x] Investigado o `403` em `/api/db-write` (tabela `parceiros`) que
+      aparecia nos logs ~3s depois de um cadastro bem-sucedido — o
+      Painel de logs da Vercel confirmou "No outgoing requests" (ou
+      seja, nem chegou a tentar falar com o Supabase — foi barrado
+      antes disso, dentro do próprio gateway).
+- [x] Causa: um `useEffect` em `App.jsx` reage a QUALQUER mudança em
+      `registeredPartners` (a lista de empresas) e tenta salvar a
+      lista inteira de novo via `upsertPartnersInDB` → tabela
+      `parceiros`, que só aceita escrita de sessão **Admin**
+      (`api/db-write.js`, de propósito — uma empresa não pode se
+      auto-promover editando o próprio registro). Quando uma empresa
+      se cadastra sozinha, o array cresce (dispara o efeito), mas só
+      existe o token de PARCEIRO dela nesse momento, nunca o de
+      admin — daí o 403. A gravação nem era necessária: o cadastro
+      já persiste tudo certinho no servidor
+      (`partner-signup.js`, com a service role key).
+- [x] Corrigido adicionando `isSuperAdmin` na condição do efeito —
+      agora só tenta persistir quando é de fato o Admin mexendo (selo
+      verificado, troca de plano, renomear, excluir empresa via
+      `PartnerManagementModal`), que é o único caso em que essa
+      gravação faz sentido e tem o token certo pra fazer.
+- ⚠️ Efeito colateral que esse mesmo bug tinha, que também sai de
+  quebra com esse fix (não reportado, achado revisando o código): o
+  mesmo efeito, sem esse gate, também tentava (e falhava, silencioso
+  no console do navegador, nunca aparecia nos logs do servidor)
+  persistir a lista toda vez que um visitante comum simplesmente
+  carregava o site — porque `registeredPartners` também muda quando
+  a carga inicial busca os parceiros do banco, e um visitante sem
+  login nenhum não tem token nenhum. Não quebrava nada visível, mas
+  gerava erro morto no console em toda visita ao site.
+- `npm run build` limpo. Fix de lógica pura (um `if` a mais numa
+  condição já existente, usando uma variável de estado — `isSuperAdmin`
+  — já usada do mesmo jeito em outros 4 handlers do mesmo arquivo) —
+  não testado com um cadastro real de ponta a ponta (exigiria simular
+  sessão de parceiro + admin juntas), mas a leitura do código confirma
+  que resolve exatamente o cenário dos logs que o usuário mostrou.
