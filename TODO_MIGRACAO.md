@@ -1069,3 +1069,33 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   o traço das linhas ainda está animando (não é só decoração
   estática). Visual bateu bem próximo da referência nos dois
   tamanhos. `npm run build` limpo depois de restaurar o `main.jsx`.
+## 🟡 v2.6.28 — Import em lote volta a desmarcar vaga sem contato (WhatsApp/telefone) por padrão
+- [x] O usuário mudou de ideia em relação à v2.6.25: naquela, tinha
+      decidido deixar só título/salário bloqueando por padrão no
+      import em lote, e o resto (sem WhatsApp/telefone) ficava de
+      fora. Depois de ver o `vagas_facebook.json` real (172 vagas, 56
+      delas sem WhatsApp nem telefone) entrando marcadas
+      automaticamente, decidiu que quer a mesma trava de novo.
+- [x] Reaplicado em `JSONImporter.jsx` exatamente o que a v2.6.24
+      tinha adicionado e a v2.6.25 revertida: detecção de
+      `semContato` (nem `whatsapp` nem `telefone` preenchidos) — entra
+      na mesma regra de `semTitulo`/`semSalario` (já vem
+      DESMARCADA, precisa decisão explícita pra publicar mesmo
+      assim), aviso atualizado ("sem título, sem salário e/ou sem
+      contato"), e a etiqueta "⚠️ Sem contato" ao lado de "Sem
+      salário" na lista de revisão.
+- [x] **Só mexeu no import em lote** — de propósito não voltou a
+      mexer no Publicador Mágico (`AIPublisher.jsx`) nem na exibição
+      (`JobCard.jsx`/`IndicacaoCard.jsx`, aquele "A combinar"/"Ligar"
+      da v2.6.24): o pedido foi específico sobre "antes do import no
+      JSON", e o resto continua como a v2.6.25 deixou.
+- Testado com o arquivo `vagas_facebook.json` de verdade (172 vagas,
+  o mesmo que o usuário usou) direto no `JSONImporter` renderizado
+  isoladamente: resultado "172 vagas no arquivo · 114 selecionadas",
+  aviso "58 vagas sem título, sem salário e/ou sem contato — já
+  entraram desmarcadas", e cada linha com a etiqueta certa
+  ("⚠️ Sem contato") nas que não tinham WhatsApp nem telefone — bate
+  exatamente com a expectativa (172 − 58 = 114; os 58 são a união de
+  5 sem salário + 56 sem contato, com 3 vagas em ambos os grupos ao
+  mesmo tempo). `npm run build` limpo depois de restaurar o
+  `main.jsx`.

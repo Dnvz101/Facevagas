@@ -56,14 +56,16 @@ export default function JSONImporter({ dbStatus, jobs, onImported }) {
         const existing = (nj.urlOriginal && byUrl.get(nj.urlOriginal)) || byFingerprint.get(jobFingerprint(nj));
         const semTitulo = !nj.cargo;
         const semSalario = !nj.salarioHora; // parseSalaryRange sempre devolve número — 0 quando não achou nenhum valor
+        const semContato = !nj.whatsapp && !nj.telefone; // sem os dois, a vaga publicada não tem NENHUM botão de contato
         return {
           key: uid(),
-          checked: !(semTitulo || semSalario), // sem título ou sem salário já entra DESMARCADA — precisa decisão explícita de manter
+          checked: !(semTitulo || semSalario || semContato), // sem título, sem salário ou sem contato já entra DESMARCADA — precisa decisão explícita de manter
           mapped: nj,
           isUpdate: !!existing,
           existingId: existing?.id || null,
           semTitulo,
           semSalario,
+          semContato,
         };
       });
 
@@ -119,7 +121,7 @@ export default function JSONImporter({ dbStatus, jobs, onImported }) {
   };
 
   const totalSelecionadas = preview ? preview.filter((it) => it.checked).length : 0;
-  const totalAvisos = preview ? preview.filter((it) => it.semTitulo || it.semSalario).length : 0;
+  const totalAvisos = preview ? preview.filter((it) => it.semTitulo || it.semSalario || it.semContato).length : 0;
   const todasMarcadas = preview ? preview.every((it) => it.checked) : false;
 
   return (
@@ -172,13 +174,13 @@ export default function JSONImporter({ dbStatus, jobs, onImported }) {
           {totalAvisos > 0 && (
             <p className="nv-body mb-2 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-[11.5px] font-medium text-amber-700">
               <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
-              {totalAvisos} vaga{totalAvisos === 1 ? "" : "s"} sem título e/ou sem salário — já entraram desmarcadas, marque de volta se quiser publicar mesmo assim.
+              {totalAvisos} vaga{totalAvisos === 1 ? "" : "s"} sem título, sem salário e/ou sem contato (WhatsApp/telefone) — já entraram desmarcadas, marque de volta se quiser publicar mesmo assim.
             </p>
           )}
 
           <div className="max-h-[340px] overflow-y-auto rounded-xl border border-slate-200">
             {preview.map((it) => {
-              const temAviso = it.semTitulo || it.semSalario;
+              const temAviso = it.semTitulo || it.semSalario || it.semContato;
               return (
                 <label
                   key={it.key}
@@ -210,6 +212,11 @@ export default function JSONImporter({ dbStatus, jobs, onImported }) {
                     ) : (
                       <span className="nv-body text-[12.5px] font-bold text-slate-800">
                         ¥{formatYen(it.mapped.salarioHora)}{it.mapped.salarioMax ? `–${formatYen(it.mapped.salarioMax)}` : ""}/h
+                      </span>
+                    )}
+                    {it.semContato && (
+                      <span className="nv-body mt-0.5 flex items-center justify-end gap-1 text-[10px] font-bold text-amber-600">
+                        <AlertTriangle className="h-2.5 w-2.5" /> Sem contato
                       </span>
                     )}
                   </div>
