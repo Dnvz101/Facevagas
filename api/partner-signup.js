@@ -119,6 +119,18 @@ export default async function handler(req, res) {
       planKey: row.plan_key,
       seloVerificado: !!row.selo_verificado,
     };
+
+    // Avisa o celular do Leandro via ntfy.sh (app grátis, sem conta) —
+    // dispara e não espera resposta: se o ntfy estiver fora do ar, o
+    // cadastro da empresa NUNCA pode falhar por causa disso.
+    if (process.env.NTFY_TOPIC) {
+      fetch(`https://ntfy.sh/${process.env.NTFY_TOPIC}`, {
+        method: "POST",
+        headers: { Title: "Nova empresa no NihonVagas", Tags: "moneybag" },
+        body: `${row.name} (${tipo}) acabou de se cadastrar — ${emailLower}`,
+      }).catch((err) => console.error("partner-signup: falha ao notificar ntfy (não bloqueia o cadastro):", err));
+    }
+
     return res.status(200).json({ success: true, token, partner, listing });
   } catch (err) {
     console.error("partner-signup: erro ao cadastrar:", err);

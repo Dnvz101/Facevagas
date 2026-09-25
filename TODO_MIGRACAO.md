@@ -1099,3 +1099,24 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   5 sem salário + 56 sem contato, com 3 vagas em ambos os grupos ao
   mesmo tempo). `npm run build` limpo depois de restaurar o
   `main.jsx`.
+## 🟣 v2.6.29 — Notificação no celular quando empresa se cadastra (ntfy.sh)
+- [x] A pedido: `api/partner-signup.js` agora dispara uma notificação
+      push pro celular do Leandro assim que uma empresa/prestador
+      termina o cadastro — usando **ntfy.sh** (app grátis, sem conta,
+      sem custo) em vez de montar um sistema de e-mail/push próprio.
+- [x] Dispara com `.catch()` e sem `await` bloqueando a resposta — se
+      o ntfy.sh estiver fora do ar ou o `NTFY_TOPIC` não estiver
+      configurado, o cadastro da empresa continua funcionando normal;
+      a notificação é só um "bônus", nunca pode travar o fluxo
+      principal.
+- [x] Fica desligado até configurar a variável de ambiente
+      `NTFY_TOPIC` na Vercel — sem ela, simplesmente não dispara nada
+      (nenhuma mudança de comportamento pra quem ainda não configurou).
+- Testado isoladamente com `fetch` mockado (sem depender do Supabase
+  de verdade nem do ntfy.sh real): confirmado que a chamada vai pra
+  `https://ntfy.sh/<NTFY_TOPIC>`, com o nome da empresa, tipo e e-mail
+  no corpo da mensagem. **Não testado o envio de verdade** — o
+  ambiente onde rodo não tem acesso de rede pro domínio ntfy.sh, só
+  dá pra confirmar a entrega de fato depois de configurar a variável
+  na Vercel e testar com um cadastro real (ou de teste) no site já
+  publicado.
