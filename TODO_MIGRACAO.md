@@ -1186,3 +1186,26 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   não testado com um cadastro real de ponta a ponta (exigiria simular
   sessão de parceiro + admin juntas), mas a leitura do código confirma
   que resolve exatamente o cenário dos logs que o usuário mostrou.
+## 🟠 v2.6.32 — Publicador Mágico: novo texto + imagem de exemplo ao lado do print
+- [x] A pedido: texto acima da área de envio do print, em
+      `AIPublisher.jsx`, trocado de "Envie o print da vaga do
+      Facebook e a IA preenche tudo." para algo que deixa claro que
+      NÃO precisa ser só print do Facebook — qualquer imagem com
+      informação da vaga serve. Novo texto: "Envie o print da vaga —
+      pode ser daquelas que você já usa no Facebook, como esse aí ao
+      lado — ou qualquer imagem com as informações da vaga, e deixa
+      que nossa IA faz o resto."
+- [x] Adicionada uma miniatura de exemplo (o flyer "Assist" que o
+      usuário mandou como referência) ao lado do texto — pequena
+      (56×56), só pra dar uma ideia visual do tipo de imagem que
+      funciona, sem precisar ser legível. Imagem salva em
+      `public/exemplo-print-vaga.jpg`, redimensionada e comprimida
+      (300×300, JPEG qualidade 85) — 39KB em vez dos ~580KB do
+      arquivo original, já que é só uma miniatura.
+- Testado com o pipeline real do projeto (`AIPublisher` renderizado
+  isolado): miniatura aparece ao lado do texto novo, tamanho e
+  posição batem com o que foi pedido ("pequena igual na pré-
+  visualização do chat"). Confirmado que `public/exemplo-print-
+  vaga.jpg` sai copiado pra `dist/` no build de produção (assets em
+  `public/` são copiados automaticamente pelo Vite). `npm run build`
+  limpo.

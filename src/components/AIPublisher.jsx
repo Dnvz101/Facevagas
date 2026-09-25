@@ -422,7 +422,16 @@ export default function AIPublisher({ onPublish, currentPlan, planKey, canUseBad
         <h3 className="nv-display flex items-center gap-2 text-[15px] font-bold text-slate-900">
           <Sparkles className="h-4 w-4 text-blue-600" /> Publicador Mágico
         </h3>
-        <p className="nv-body mb-4 text-[12px] text-slate-500">Envie o print da vaga do Facebook e a IA preenche tudo.</p>
+        <div className="mb-4 flex items-start gap-3">
+          <img
+            src="/exemplo-print-vaga.jpg"
+            alt="Exemplo de print de vaga que a IA consegue ler"
+            className="h-14 w-14 flex-shrink-0 rounded-lg border border-slate-200 object-cover"
+          />
+          <p className="nv-body text-[12px] leading-relaxed text-slate-500">
+            Envie o print da vaga — pode ser daquelas que você já usa no Facebook, como esse aí ao lado — ou qualquer imagem com as informações da vaga, e deixa que nossa IA faz o resto.
+          </p>
+        </div>
 
         <div
           ref={dropRef}
