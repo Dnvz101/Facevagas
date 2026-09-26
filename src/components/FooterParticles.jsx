@@ -3,8 +3,9 @@
 // de um componente do 21st.dev, originalmente feito pra tela cheia
 // com Next.js/shadcn — aqui virou algo bem mais sutil e preso só à
 // altura do rodapé):
-//  • Poucas partículas (25, não 140), devagar, baixa opacidade — é
-//    decoração de fundo, não o protagonista da tela.
+//  • Perceptível mas ainda contido (55 partículas, não 140 do
+//    original) — reforçado a pedido do usuário, que achou a versão
+//    anterior (30, opacidade 0.45) quase invisível.
 //  • Sem interação nenhuma no hover/clique — um efeito "puxa/empurra"
 //    ao passar o mouse combina com landing page de produto, não com o
 //    rodapé de um site de vagas de emprego.
@@ -43,13 +44,13 @@ export default function FooterParticles() {
       if (cancelled || !window.particlesJS) return;
       window.particlesJS(domId, {
         particles: {
-          number: { value: 30, density: { enable: true, value_area: 900 } },
-          color: { value: "#3b82f6" },
+          number: { value: 55, density: { enable: true, value_area: 900 } },
+          color: { value: "#2563eb" },
           shape: { type: "circle" },
-          opacity: { value: 0.45, random: true },
-          size: { value: 2.6, random: true },
-          line_linked: { enable: true, distance: 140, color: "#3b82f6", opacity: 0.25, width: 1 },
-          move: { enable: true, speed: 0.6, random: true, out_mode: "out" },
+          opacity: { value: 0.8, random: true },
+          size: { value: 4, random: true },
+          line_linked: { enable: true, distance: 160, color: "#2563eb", opacity: 0.55, width: 1.5 },
+          move: { enable: true, speed: 1.3, random: true, out_mode: "out" },
         },
         // Sem interatividade de propósito — decoração de fundo, não
         // um brinquedo pra mexer.

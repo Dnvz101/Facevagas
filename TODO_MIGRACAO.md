@@ -1278,3 +1278,23 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
       projeto com esse texto (conferido com grep antes de mexer).
 - Testado com o pipeline real do projeto, desktop e mobile — texto
   novo aparece certinho, sem quebrar layout. `npm run build` limpo.
+## ⚪ v2.6.36 — Animação de partículas do rodapé, bem mais visível
+- [x] A pedido: usuário achou a animação de fundo do rodapé
+      (`FooterParticles.jsx`, biblioteca particles.js via CDN) quase
+      invisível. Aumentado: 30→55 partículas, opacidade 0.45→0.8,
+      tamanho 2.6→4, linha conectora 0.25→0.55 de opacidade (e mais
+      grossa, 1→1.5), velocidade 0.6→1.3. Cor também ajustada de
+      #3b82f6 pra #2563eb (o azul de marca que o resto do site já
+      usa, em vez de um azul mais claro/genérico).
+- [x] Continua sem interatividade nenhuma (hover/clique desligados,
+      de propósito — é decoração de fundo do rodapé, não brinquedo)
+      e sem atrapalhar clique nos links reais por baixo
+      (`pointer-events:none`), como já era.
+- Testado offline: como o componente carrega o particles.js de um
+  CDN (jsdelivr) que meu ambiente de teste não alcança, instalei a
+  MESMA versão da biblioteca (2.0.0, igual ao CDN) via npm só pra
+  teste, e renderizei lado a lado a config antiga vs. a nova com
+  Playwright — confirmado visualmente que a antiga é quase
+  imperceptível (pontinhos e linhas muito fracos) e a nova aparece
+  clara, sem exagerar (ainda é decoração de fundo, não vira o
+  protagonista da tela). `npm run build` limpo.
