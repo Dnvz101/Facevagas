@@ -1298,3 +1298,16 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   imperceptível (pontinhos e linhas muito fracos) e a nova aparece
   clara, sem exagerar (ainda é decoração de fundo, não vira o
   protagonista da tela). `npm run build` limpo.
+## ⚪ v2.6.37 — Import em lote: contagem de "novas" x "atualizações" no resumo
+- [x] A pedido: a linha "X vagas no arquivo · Y selecionadas"
+      (`JSONImporter.jsx`) ganhou o detalhamento entre parênteses —
+      ex.: "172 vagas no arquivo · 114 selecionadas (113 novas · 1
+      atualização)". Conta só entre as SELECIONADAS (o que vai
+      acontecer de verdade se clicar em Publicar agora), não a lista
+      inteira do arquivo.
+- Testado com o `vagas_facebook.json` de verdade: primeiro sem nenhum
+  match (172 vagas todas "novas" — confirma que não filtra nada à
+  toa), depois forçando 1 vaga a bater a impressão digital
+  (empresa+cargo+cidade+salário) com uma vaga "existente" simulada —
+  contou certinho "113 novas · 1 atualização", com a gramática de
+  singular/plural correta nos dois lados. `npm run build` limpo.

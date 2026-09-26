@@ -123,6 +123,10 @@ export default function JSONImporter({ dbStatus, jobs, onImported }) {
   const totalSelecionadas = preview ? preview.filter((it) => it.checked).length : 0;
   const totalAvisos = preview ? preview.filter((it) => it.semTitulo || it.semSalario || it.semContato).length : 0;
   const todasMarcadas = preview ? preview.every((it) => it.checked) : false;
+  // Novas x atualização entre as SELECIONADAS — é o que vai acontecer
+  // de verdade se clicar em Publicar agora, não a lista toda.
+  const totalNovasSelecionadas = preview ? preview.filter((it) => it.checked && !it.isUpdate).length : 0;
+  const totalAtualizacoesSelecionadas = preview ? preview.filter((it) => it.checked && it.isUpdate).length : 0;
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -165,6 +169,11 @@ export default function JSONImporter({ dbStatus, jobs, onImported }) {
                 className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400"
               />
               {preview.length} vaga{preview.length === 1 ? "" : "s"} no arquivo · {totalSelecionadas} selecionada{totalSelecionadas === 1 ? "" : "s"}
+              {totalSelecionadas > 0 && (
+                <span className="font-normal text-slate-400">
+                  {" "}({totalNovasSelecionadas} nova{totalNovasSelecionadas === 1 ? "" : "s"} · {totalAtualizacoesSelecionadas} atualiza{totalAtualizacoesSelecionadas === 1 ? "ção" : "ções"})
+                </span>
+              )}
             </label>
             <button onClick={cancelar} className="nv-body text-[11.5px] font-semibold text-slate-400 hover:text-slate-600">
               Cancelar
