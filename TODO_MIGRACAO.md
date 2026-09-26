@@ -1271,3 +1271,10 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   mobile (390px), pipeline real do projeto: as duas linhas de cima
   agora convergem num ponto só, igual as de baixo. `npm run build`
   limpo.
+## ⚪ v2.6.35 — Texto do banner: "Direto com o 担当者" → "Fale direto com o Tantousha"
+- [x] A pedido: no banner (`BannerCard.jsx`, rodapé de 3 itens), o
+      texto que usava o kanji 担当者 virou "Fale direto com o
+      Tantousha" — romanizado, sem caractere japonês. Único lugar do
+      projeto com esse texto (conferido com grep antes de mexer).
+- Testado com o pipeline real do projeto, desktop e mobile — texto
+  novo aparece certinho, sem quebrar layout. `npm run build` limpo.

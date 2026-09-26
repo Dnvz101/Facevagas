@@ -171,7 +171,7 @@ export function InfoBanner({ jobs = [] }) {
             <MessageCircle className="h-4 w-4" />
           </div>
           <div className="text-left">
-            <p className="nv-body text-xs font-bold leading-tight text-blue-600">Direto com o 担当者</p>
+            <p className="nv-body text-xs font-bold leading-tight text-blue-600">Fale direto com o Tantousha</p>
             <p className="nv-body text-[11px] leading-tight text-slate-500">Fale com o responsável da vaga</p>
           </div>
         </div>
