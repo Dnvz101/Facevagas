@@ -427,19 +427,37 @@ export const supabaseAdapter = {
       seloVerificado: !!r.selo_verificado,
     }));
   },
+  // NUNCA usa "upsert" aqui — o navegador nunca tem a senha de
+  // ninguém (por segurança, ela nunca é buscada do banco pro
+  // navegador em fetchPartners), e "upsert" no Postgres/PostgREST
+  // monta a tentativa de INSERIR a linha inteira antes de decidir se
+  // vai atualizar — como "password" é NOT NULL sem valor padrão, essa
+  // tentativa falha na hora (erro 23502), mesmo pra uma empresa que
+  // já existe. E como isso ia tudo num comando só pra lista inteira,
+  // UMA empresa com esse problema travava a gravação de TODAS as
+  // outras junto (achado num bug reportado: selo/plano "voltava"
+  // depois de mudar, porque a gravação inteira falhava silenciosa).
+  //
+  // "update" (PATCH) resolve os dois problemas: só toca as colunas
+  // que a gente realmente manda (nunca password) e cada empresa vira
+  // uma gravação independente — uma falhar não derruba as outras.
   async upsertPartners(partners) {
-    const rows = partners.map((p) => ({
-      id: p.id,
-      tipo: p.tipo,
-      name: p.name,
-      email: p.email,
-      password: p.password,
-      phone_pt: p.phonePt,
-      phone_jp: p.phoneJp,
-      plan_key: p.planKey,
-      selo_verificado: p.seloVerificado,
-    }));
-    await dbWrite("parceiros", "upsert", { rows });
+    await Promise.all(
+      partners.map((p) =>
+        dbWrite("parceiros", "update", {
+          rows: {
+            tipo: p.tipo,
+            name: p.name,
+            email: p.email,
+            phone_pt: p.phonePt,
+            phone_jp: p.phoneJp,
+            plan_key: p.planKey,
+            selo_verificado: p.seloVerificado,
+          },
+          match: { id: p.id },
+        })
+      )
+    );
   },
   // upsertPartners (acima) NUNCA apaga linha nenhuma — é um upsert puro
   // (insere/atualiza por ID). Excluir um parceiro de verdade do banco

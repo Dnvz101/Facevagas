@@ -1348,3 +1348,44 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   Chromium headless do Playwright com `beforeunload`, não do código
   (a API em si é padrão de navegador, bem estabelecida). `npm run
   build` limpo depois de restaurar o `main.jsx`.
+## 🔴 v2.6.39 — Causa real do bug "selo/plano não salva": upsert em lote sem senha, batendo em NOT NULL
+- [x] A v2.6.38 (indicador "Salvando..." + bloqueio de F5) tratou um
+      sintoma parecido, mas o usuário confirmou que esperou MINUTOS
+      antes de recarregar e mesmo assim não salvava — provando que
+      não era corrida contra F5 prematuro. Pedi o erro do Console e
+      veio a causa de verdade: Postgres `23502` (`not_null_violation`)
+      na coluna `password` da tabela `parceiros`.
+- [x] Causa real: `upsertPartners` (`supabase.js`) mandava a lista
+      INTEIRA de parceiros como um único `action: "upsert"` — que no
+      Postgres é `INSERT ... ON CONFLICT DO UPDATE`. O navegador NUNCA
+      tem a senha de ninguém (por segurança, nunca é buscada do banco
+      — ver `fetchPartners`), então essa coluna sempre ia ausente do
+      pacote. Isso já era sabido e cogitado bem no início da
+      investigação, mas foi descartado por engano com o raciocínio de
+      que "merge-duplicates só atualiza as colunas mandadas" — só que
+      isso é verdade para o UPDATE em si, só que o Postgres precisa
+      montar a TENTATIVA DE INSERT completa (com NULL nas colunas
+      ausentes) antes mesmo de checar o conflito — e como
+      `password not null` não tem valor padrão, essa tentativa falha
+      NA HORA, mesmo pra uma linha que já existe. Bônus ruim: como era
+      tudo num comando só pra lista inteira, UMA empresa com esse
+      problema (aqui: faltando confirmar por que especificamente essa
+      linha, mas o mecanismo é universal — toda linha carece de
+      password) travava a gravação de TODAS as empresas do lote.
+- [x] Corrigido trocando `action: "upsert"` (lista inteira, 1 comando)
+      por várias chamadas `action: "update"` (PATCH), uma por parceiro,
+      cada uma só com as colunas que fazem sentido mudar (tipo, name,
+      email, phone_pt, phone_jp, plan_key, selo_verificado — nunca
+      password). PATCH no PostgREST só toca as colunas mandadas, sem
+      montar tentativa de INSERT nenhuma — não esbarra na trava de
+      NOT NULL de uma coluna que nem faz parte do pacote. Efeito
+      colateral bom: cada empresa agora é uma gravação independente —
+      uma falhar não derruba as outras.
+- Testado com fetch mockado no navegador de verdade (via Vite +
+  Playwright, não Node puro, já que o arquivo depende de
+  `import.meta.env`): 3 parceiros, um deles simulando erro do
+  servidor — confirmado que viram 3 requisições PATCH separadas (não
+  1 lote), nenhuma contém "password" no corpo, e AS 3 disparam pro
+  navegador mesmo com uma delas simulando falha (as 2 boas não ficam
+  reféns da uma com problema). `npm run build` limpo depois de
+  restaurar o `main.jsx`.
