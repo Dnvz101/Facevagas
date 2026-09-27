@@ -1311,3 +1311,40 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   (empresa+cargo+cidade+salário) com uma vaga "existente" simulada —
   contou certinho "113 novas · 1 atualização", com a gramática de
   singular/plural correta nos dois lados. `npm run build` limpo.
+## 🔴 v2.6.38 — Fix: selo/plano "voltava" ao dar refresh logo após mudar
+- [x] Usuário relatou: muda selo Verificado ou plano de uma empresa
+      no Admin, dá refresh na página "logo em seguida" e a mudança
+      não está mais lá.
+- [x] Causa: a gravação (`upsertPartnersInDB`, disparada pelo
+      `useEffect` que a v2.6.31 corrigiu) é assíncrona e a tela não
+      dava NENHUM aviso de que ainda estava em andamento. Se o
+      navegador recarrega antes do PATCH pro Supabase terminar, é o
+      PRÓPRIO NAVEGADOR que cancela essa requisição no meio do
+      caminho — isso não tem como "consertar" só com `await` no
+      código (await não sobrevive a um F5); precisa impedir o F5
+      prematuro, ou pelo menos avisar que ainda não é seguro.
+      Mesma categoria do bug do ntfy (v2.6.30): gravação assíncrona
+      sem sinalização nenhuma de progresso.
+- [x] Corrigido com duas coisas, ambas em cima do mesmo estado novo
+      (`partnersSyncing`, em `App.jsx`):
+      1. Indicador visual no `PartnerManagementModal` — badge
+         "Salvando..." (com spinner) no cabeçalho + um aviso "Não
+         feche nem atualize a página ainda" enquanto a gravação está
+         em voo.
+      2. Bloqueio de verdade: um listener de `beforeunload` que só
+         fica ativo enquanto `partnersSyncing` é true — se o Admin
+         tentar fechar a aba ou dar F5 nesse intervalo curto, o
+         próprio navegador pergunta "sair da página?" antes de
+         deixar, dando a chance de cancelar.
+- Testado em duas partes: (1) visual — `syncing=true`/`false`
+  renderizados lado a lado, confirmando que o badge e o aviso aparecem
+  certinho; (2) lógica de estado — reproduzi os 2 `useEffect`s
+  isolados com um "upsert" mockado de 1.500ms, confirmando que
+  `partnersSyncing` vira `true` na hora da mudança, continua `true`
+  em 400ms (ainda em voo) e só vira `false` depois que a gravação
+  termina de verdade (1.700ms) — e que o listener de `beforeunload`
+  liga/desliga no mesmo ritmo. Não consegui confirmar o diálogo nativo
+  "sair da página?" aparecendo de fato — é uma limitação conhecida do
+  Chromium headless do Playwright com `beforeunload`, não do código
+  (a API em si é padrão de navegador, bem estabelecida). `npm run
+  build` limpo depois de restaurar o `main.jsx`.

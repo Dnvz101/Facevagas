@@ -550,10 +550,33 @@ export default function App() {
   // essa gravação nem era necessária, já que o cadastro em si já
   // persiste tudo certinho no servidor (partner-signup.js, com a
   // service role key).
+  //
+  // `partnersSyncing` existe pra resolver um bug relatado: Admin muda
+  // selo/plano, dá refresh na página "logo em seguida" e a mudança
+  // some. A gravação em si funciona — o problema é que ela é
+  // assíncrona e não temos NENHUM aviso na tela de que ainda está em
+  // voo; se o navegador recarrega antes do PATCH pro Supabase
+  // terminar, o próprio navegador cancela essa requisição no meio do
+  // caminho (isso é o browser fazendo isso, não um bug que dê pra
+  // "consertar" só com await no código — await não sobrevive a um
+  // F5). A solução de verdade é avisar visualmente enquanto está
+  // salvando, e travar o F5/fechar aba nesse intervalo curto com o
+  // aviso nativo do navegador (beforeunload).
+  const [partnersSyncing, setPartnersSyncing] = useState(false);
   useEffect(() => {
     if (dbStatus !== "connected" || !isSuperAdmin) return;
-    upsertPartnersInDB(registeredPartners).catch((err) => console.error("Falha ao salvar parceiros:", err));
+    setPartnersSyncing(true);
+    upsertPartnersInDB(registeredPartners)
+      .catch((err) => console.error("Falha ao salvar parceiros:", err))
+      .finally(() => setPartnersSyncing(false));
   }, [registeredPartners, dbStatus, isSuperAdmin]);
+
+  useEffect(() => {
+    if (!partnersSyncing) return;
+    const avisar = (e) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [partnersSyncing]);
 
   // Relógio dos ciclos automáticos (🔥 Destaque = 7 dias, 🆕 Nova Vaga =
   // 48h, + arquivamento de vaga "sumida" do scraper) — confere
@@ -1788,6 +1811,7 @@ export default function App() {
         onChangePlano={handleChangePartnerPlano}
         onRename={handleRenamePartner}
         onDelete={handleDeletePartner}
+        syncing={partnersSyncing}
       />
 
       <SalaryCalculatorModal

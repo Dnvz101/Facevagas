@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------
 
 import { useState, useMemo } from "react";
-import { Users, X, BadgeCheck, Settings, Trash2, MessageCircle, Eye, Heart, BarChart3 } from "lucide-react";
+import { Users, X, BadgeCheck, Settings, Trash2, MessageCircle, Eye, Heart, BarChart3, Loader2 } from "lucide-react";
 import { PARTNER_TYPES, partnerTypeLabel, partnerTypeEmoji } from "../config/partnerTypes.js";
 import { PLANOS_ORDER } from "../config/plans.js";
 import RelatorioDesempenho from "./RelatorioDesempenho.jsx";
@@ -20,7 +20,7 @@ const SELO_COTA = [
   { key: "isUrgente", label: "Urgente", emoji: "⚡", cotaField: "cotaUrgente" },
 ];
 
-export default function PartnerManagementModal({ isOpen, onClose, registeredPartners, jobs, planos, onToggleVerificado, onChangePlano, onRename, onDelete }) {
+export default function PartnerManagementModal({ isOpen, onClose, registeredPartners, jobs, planos, onToggleVerificado, onChangePlano, onRename, onDelete, syncing = false }) {
   const [filterTipo, setFilterTipo] = useState("todos"); // "todos" | "empreiteira" | "prestador" | "loja"
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
@@ -83,10 +83,22 @@ export default function PartnerManagementModal({ isOpen, onClose, registeredPart
           <h3 className="nv-display flex items-center gap-2 text-[15px] font-bold text-slate-900">
             <Users className="h-4 w-4 text-blue-600" /> Parceiros & Selos
           </h3>
-          <button onClick={onClose} className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100">
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {syncing && (
+              <span className="nv-body flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[10.5px] font-bold text-amber-700">
+                <Loader2 className="h-3 w-3 animate-spin" /> Salvando...
+              </span>
+            )}
+            <button onClick={onClose} className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
+        {syncing && (
+          <p className="nv-body border-b border-amber-100 bg-amber-50 px-5 py-1.5 text-center text-[10.5px] font-medium text-amber-700">
+            Não feche nem atualize a página ainda — a alteração está sendo salva.
+          </p>
+        )}
 
         <div className="flex gap-1 overflow-x-auto border-b border-slate-100 px-5 py-3">
           {[{ key: "todos", label: "Todos" }, ...PARTNER_TYPES.map((t) => ({ key: t.key, label: `${t.emoji} ${t.label}` }))].map(
