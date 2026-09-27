@@ -12,8 +12,17 @@ import { toWhatsAppLink } from "../utils/format.js";
 import { formatYen } from "../utils/format.js";
 import { salaryUnitLabel, simplifyTurno, simplifyNihongo, safeCidade, isTopSalarioRule } from "../utils/jobParsing.js";
 
-export default function JobCard({ job, isFlipped, onToggleFlip, onContact, onView, isTop, isHighlighted, onSimulate, isFavorited = false, onToggleFavorite }) {
+export default function JobCard({ job, isFlipped, onToggleFlip, onContact, onView, isTop, isHighlighted, onSimulate, isFavorited = false, onToggleFavorite, cardBackgroundUrl = null }) {
   const waLink = toWhatsAppLink(job.whatsapp, job.cargo);
+  const hasCustomBg = !!cardBackgroundUrl;
+  // Paleta alternativa pro texto quando tem fundo customizado — o
+  // fundo pode ser qualquer imagem que a empresa mandou, então o
+  // overlay escuro (abaixo) garante contraste sempre, e o texto usa
+  // tons claros em vez dos cinzas/pretos de sempre.
+  const txtEmpresa = hasCustomBg ? "text-blue-200" : "text-slate-400";
+  const txtCargo = hasCustomBg ? "text-white" : "text-slate-900";
+  const txtMeta = hasCustomBg ? "text-blue-100" : "text-slate-500";
+  const txtLink = hasCustomBg ? "text-blue-300" : "text-blue-600";
 
   const stop = (e) => e.stopPropagation();
 
@@ -168,20 +177,32 @@ export default function JobCard({ job, isFlipped, onToggleFlip, onContact, onVie
         <div
           ref={frontRef}
           style={{ ...faceStyle, transform: isFlipped ? "rotateX(180deg)" : "rotateX(0deg)", pointerEvents: isFlipped ? "none" : "auto" }}
-          className="relative rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition-shadow hover:shadow-md"
+          className={`relative overflow-hidden rounded-2xl border p-3.5 shadow-sm transition-shadow hover:shadow-md ${
+            hasCustomBg ? "border-slate-700" : "border-slate-200 bg-white"
+          }`}
         >
-          <div className={job.preenchida ? "pointer-events-none select-none opacity-60 blur-[3px]" : ""}>
+          {hasCustomBg && (
+            <>
+              <img src={cardBackgroundUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+              {/* Overlay escuro fixo — garante o texto legível não importa
+                  qual imagem a empresa suba (clara, escura, colorida). Não é
+                  opcional/ajustável de propósito: sem isso, uma imagem clara
+                  deixaria o texto branco ilegível. */}
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-900/85 via-slate-900/78 to-blue-950/85" />
+            </>
+          )}
+          <div className={`relative ${hasCustomBg ? "z-10" : ""} ${job.preenchida ? "pointer-events-none select-none opacity-60 blur-[3px]" : ""}`}>
           {/* Topo do card: só empresa, título, Top Salário (se houver) e o preço.
               Recomendado/Urgente moraram pra linha de metadados abaixo — evita
               que o cabeçalho fique alto/apertado quando vários selos se acumulam.
               O selo de verificação (check azul) vai colado ao nome da empresa. */}
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="nv-body flex items-center gap-1 truncate text-[10px] font-semibold tracking-wide text-slate-400">
+              <p className={`nv-body flex items-center gap-1 truncate text-[10px] font-semibold tracking-wide ${txtEmpresa}`}>
                 <span className="truncate">{job.empresa}</span>
                 {job.seloVerificado && <VerificadoBadge />}
               </p>
-              <h3 className="nv-display truncate text-base font-bold leading-snug text-slate-900">{job.cargo}</h3>
+              <h3 className={`nv-display truncate text-base font-bold leading-snug ${txtCargo}`}>{job.cargo}</h3>
             </div>
             <div className="flex flex-shrink-0 flex-col items-end gap-1">
               {isTopSalarioRule(job.salarioMax || job.salarioHora) && <TopSalarioBadge />}
@@ -193,7 +214,7 @@ export default function JobCard({ job, isFlipped, onToggleFlip, onContact, onVie
             </div>
           </div>
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+          <div className={`mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs ${txtMeta}`}>
             <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {turnoLabel}</span>
             <span className="flex items-center gap-1"><Languages className="h-3 w-3" /> {nihongoLabel}</span>
             {localLabel && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {localLabel}</span>}
@@ -208,7 +229,7 @@ export default function JobCard({ job, isFlipped, onToggleFlip, onContact, onVie
           )}
 
           <div className="mt-1.5 flex items-center justify-between gap-2">
-            <p className="flex min-w-0 flex-1 items-center gap-1 truncate text-[12px] font-medium text-blue-600">
+            <p className={`flex min-w-0 flex-1 items-center gap-1 truncate text-[12px] font-medium ${txtLink}`}>
               <Info className="h-3 w-3 flex-shrink-0" /> Toque para ver a descrição completa
             </p>
             <div className="flex flex-shrink-0 items-center gap-1.5">
@@ -226,7 +247,9 @@ export default function JobCard({ job, isFlipped, onToggleFlip, onContact, onVie
               <button
                 onClick={handleShare}
                 title="Compartilhar vaga"
-                className="relative flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50"
+                className={`relative flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border ${
+                  hasCustomBg ? "border-white/30 text-white hover:bg-white/10" : "border-slate-200 text-slate-500 hover:bg-slate-50"
+                }`}
               >
                 <Share2 className="h-3 w-3" />
                 {shareCopied && (

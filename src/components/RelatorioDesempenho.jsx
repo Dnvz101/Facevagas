@@ -219,6 +219,15 @@ export default function RelatorioDesempenho({ partner, jobs, onClose }) {
 
             <div className="mt-4 bg-blue-50 px-4 py-3 text-center">
               <p className="nv-body text-[11px] font-medium text-blue-900">Continue publicando vagas atualizadas para manter seu desempenho.</p>
+              {/* Lembrete puro — sem número novo pra calcular (a pedido:
+                  "só um lembrete"), só aparece pra quem já tem a Página
+                  Exclusiva liberada, e vai JUNTO na imagem baixada, já
+                  que é a empresa quem recebe esse relatório por WhatsApp. */}
+              {partner.paginaExclusivaAtiva && (
+                <p className="nv-body mt-1 text-[10.5px] font-semibold text-indigo-600">
+                  📎 Não esqueça de compartilhar sua Página Exclusiva com seus candidatos!
+                </p>
+              )}
             </div>
           </div>
           {/* ---------- fim do que vira imagem ---------- */}

@@ -111,3 +111,34 @@ export function resizeImageFile(file, maxWidth = BANNER_MAX_WIDTH, maxHeight = B
     reader.readAsDataURL(file);
   });
 }
+
+// Tamanho recomendado pro "fundo do card" da Página Exclusiva — cabe
+// bem tanto no card comprido do celular quanto no mais largo do
+// desktop, e é a mesma proporção de imagem de compartilhamento de
+// link (1200x628), que a maioria das ferramentas de design já conhece
+// de cabeça.
+export const CARD_BG_MAX_WIDTH = 1200;
+export const CARD_BG_MAX_HEIGHT = 628;
+
+// Gera a URL da Página Exclusiva a partir do nome da empresa —
+// minúsculo, sem acento, espaço vira hífen. Se colidir com o slug de
+// outra empresa (nome igual ou muito parecido), completa com um
+// pedaço do id dela — só nesse caso raro a URL fica menos bonita, mas
+// nunca quebra nem sobrescreve o link de quem já tinha.
+export function gerarSlugUnico(nome, idAtual, parceirosExistentes) {
+  const base = (nome || "")
+    .toString()
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "empresa";
+
+  const emUsoPorOutraEmpresa = (slug) =>
+    parceirosExistentes.some((p) => p.id !== idAtual && p.paginaExclusivaSlug === slug);
+
+  if (!emUsoPorOutraEmpresa(base)) return base;
+  return `${base}-${(idAtual || "").toString().slice(0, 4)}`;
+}

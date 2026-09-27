@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import BannerCard, { BannerEditor } from "./components/BannerCard.jsx";
+import ExclusivePageBanner from "./components/ExclusivePageBanner.jsx";
 import FilterBar from "./components/FilterBar.jsx";
 import { AlertBanner, AlertBannerEditor, WhatsAppAlertModal } from "./components/AlertBanner.jsx";
 import JobCard from "./components/JobCard.jsx";
@@ -91,6 +92,20 @@ export default function App() {
     const fromUrl = new URLSearchParams(window.location.search).get("tab");
     return PUBLIC_URL_TABS.includes(fromUrl) ? fromUrl : "vagas";
   });
+
+  // Página Exclusiva (?empresa=slug) — igual "tab" acima, lido da URL
+  // uma vez na montagem. "null" = navegação normal (feed completo).
+  const [exclusiveEmpresaSlug, setExclusiveEmpresaSlug] = useState(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("empresa") || null;
+  });
+  const clearExclusivePage = () => {
+    setExclusiveEmpresaSlug(null);
+    const params = new URLSearchParams(window.location.search);
+    params.delete("empresa");
+    const query = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+  };
 
   // Mantém a URL sincronizada sempre que a aba muda (troca por clique
   // OU pela restauração acima) — assim "copiar o link da página" a
@@ -762,8 +777,18 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [adminTab]);
 
+  // Resolve o slug da URL pro parceiro de verdade — só considera se
+  // "paginaExclusivaAtiva" ainda estiver ligada (Admin pode desligar
+  // depois; o link parado de alguém que compartilhou antes simplesmente
+  // deixa de filtrar, em vez de dar erro ou tela em branco).
+  const exclusivePartner = useMemo(() => {
+    if (!exclusiveEmpresaSlug) return null;
+    return registeredPartners.find((p) => p.paginaExclusivaSlug === exclusiveEmpresaSlug && p.paginaExclusivaAtiva) || null;
+  }, [exclusiveEmpresaSlug, registeredPartners]);
+
   const filteredJobs = useMemo(() => {
     return sortedJobs.filter((j) => {
+      if (exclusivePartner && j.empresa !== exclusivePartner.name) return false;
       if (filters.sexo === "homens" && !j.vagaHomens) return false;
       if (filters.sexo === "mulheres" && !j.vagaMulheres) return false;
       if (filters.provincia !== "todas" && j.provincia !== filters.provincia) return false;
@@ -771,7 +796,7 @@ export default function App() {
       if (filters.favoritas && !favoriteJobIds.has(j.id)) return false;
       return true;
     });
-  }, [sortedJobs, filters, favoriteJobIds]);
+  }, [sortedJobs, filters, favoriteJobIds, exclusivePartner]);
 
   // Paginação — 50 vagas por página, em vez de rolagem infinita.
   // Sempre volta pra página 1 quando o filtro muda — EXCEÇÃO: quando
@@ -1276,6 +1301,20 @@ export default function App() {
     setRegisteredPartners((prev) => prev.map((p) => (p.id === partnerId ? { ...p, planKey: newPlanKey } : p)));
   };
 
+  // Liga/desliga a Página Exclusiva de uma empresa. O slug (URL) já
+  // vem pronto de quem chamou (PartnerManagementModal — só ele decide
+  // gerar um slug novo, e só na primeira vez que liga) pra esse
+  // handler não precisar saber a regra de geração nem duplicar lógica.
+  const handleTogglePaginaExclusiva = (partnerId, ativa, slug) => {
+    setRegisteredPartners((prev) =>
+      prev.map((p) => (p.id === partnerId ? { ...p, paginaExclusivaAtiva: ativa, paginaExclusivaSlug: slug ?? p.paginaExclusivaSlug } : p))
+    );
+  };
+
+  const handleSetFundoCard = (partnerId, dataUrl) => {
+    setRegisteredPartners((prev) => prev.map((p) => (p.id === partnerId ? { ...p, fundoCardUrl: dataUrl } : p)));
+  };
+
   // Renomeia o parceiro E propaga o novo nome pras vagas já publicadas
   // por ele (o vínculo vaga↔empresa é feito comparando o texto do
   // nome, então sem essa propagação as vagas antigas ficariam
@@ -1483,7 +1522,11 @@ export default function App() {
       <main className="mx-auto max-w-3xl px-5 py-6">
         {tab === "vagas" && (
           <div className="space-y-4">
-            <BannerCard banner={banner} jobs={jobs} />
+            {exclusivePartner ? (
+              <ExclusivePageBanner partner={exclusivePartner} count={filteredJobs.length} onClear={clearExclusivePage} />
+            ) : (
+              <BannerCard banner={banner} jobs={jobs} />
+            )}
 
             <FilterBar jobs={jobs} filters={filters} setFilters={setFilters} />
 
@@ -1506,6 +1549,7 @@ export default function App() {
                     onSimulate={handleOpenCalculator}
                     isFavorited={favoriteJobIds.has(job.id)}
                     onToggleFavorite={handleToggleFavorite}
+                    cardBackgroundUrl={exclusivePartner?.fundoCardUrl || null}
                   />
                 ))}
                 <Pagination currentPage={currentPage} totalPages={totalPages} onGoToPage={goToPage} />
@@ -1809,6 +1853,8 @@ export default function App() {
         planos={planos}
         onToggleVerificado={handleToggleVerificado}
         onChangePlano={handleChangePartnerPlano}
+        onTogglePaginaExclusiva={handleTogglePaginaExclusiva}
+        onSetFundoCard={handleSetFundoCard}
         onRename={handleRenamePartner}
         onDelete={handleDeletePartner}
         syncing={partnersSyncing}

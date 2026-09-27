@@ -118,6 +118,9 @@ export default async function handler(req, res) {
       phoneJp: row.phone_jp || "",
       planKey: row.plan_key,
       seloVerificado: !!row.selo_verificado,
+      paginaExclusivaAtiva: false, // empresa nova nunca nasce com a Página Exclusiva — sempre liberada manual pelo Admin
+      paginaExclusivaSlug: null,
+      fundoCardUrl: null,
     };
 
     // Avisa o celular do Leandro via ntfy.sh (app grátis, sem conta).

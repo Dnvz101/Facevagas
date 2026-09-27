@@ -413,7 +413,7 @@ export const supabaseAdapter = {
   // (api/partner-login.js), nunca mais comparado aqui no navegador.
   async fetchPartners() {
     const rows = await supabaseRequest(
-      "parceiros?select=id,tipo,name,email,phone_pt,phone_jp,plan_key,selo_verificado"
+      "parceiros?select=id,tipo,name,email,phone_pt,phone_jp,plan_key,selo_verificado,pagina_exclusiva_ativa,pagina_exclusiva_slug,fundo_card_url"
     );
     if (!rows?.length) return null;
     return rows.map((r) => ({
@@ -425,6 +425,9 @@ export const supabaseAdapter = {
       phoneJp: r.phone_jp || "",
       planKey: r.plan_key,
       seloVerificado: !!r.selo_verificado,
+      paginaExclusivaAtiva: !!r.pagina_exclusiva_ativa,
+      paginaExclusivaSlug: r.pagina_exclusiva_slug || null,
+      fundoCardUrl: r.fundo_card_url || null,
     }));
   },
   // NUNCA usa "upsert" aqui — o navegador nunca tem a senha de
@@ -453,6 +456,9 @@ export const supabaseAdapter = {
             phone_jp: p.phoneJp,
             plan_key: p.planKey,
             selo_verificado: p.seloVerificado,
+            pagina_exclusiva_ativa: p.paginaExclusivaAtiva,
+            pagina_exclusiva_slug: p.paginaExclusivaSlug,
+            fundo_card_url: p.fundoCardUrl,
           },
           match: { id: p.id },
         })

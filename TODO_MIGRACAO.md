@@ -1389,3 +1389,82 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   navegador mesmo com uma delas simulando falha (as 2 boas não ficam
   reféns da uma com problema). `npm run build` limpo depois de
   restaurar o `main.jsx`.
+## 🟣 v2.6.40 — Página Exclusiva: cada empreiteira ganha um link só com as vagas dela, pra compartilhar
+- [x] Feature nova grande, nascida de uma ideia do usuário olhando a
+      Área do Cliente: cada empresa pode ganhar um link próprio
+      (`nihonvagas.jp/?empresa=<slug>`) que mostra só as vagas dela —
+      pensado como substituto de "sua empresa não precisa de site
+      próprio, a gente já deu um de graça". Construído em camadas:
+- [x] **Banco** (`schema.sql` v26): 3 colunas novas em `parceiros` —
+      `pagina_exclusiva_ativa`, `pagina_exclusiva_slug` (único),
+      `fundo_card_url`. Mapeadas em `supabase.js` (fetch + o PATCH por
+      parceiro que a v2.6.39 já corrigiu) e nos retornos de
+      `partner-login.js`/`partner-signup.js`.
+- [x] **Slug único** (`gerarSlugUnico` em `misc.js`): gerado a partir
+      do nome da empresa (minúsculo, sem acento, espaço vira hífen) só
+      na primeira vez que a Página Exclusiva é ligada — nunca muda
+      depois, mesmo se a empresa for renomeada, pra um link já
+      compartilhado nunca quebrar. Colisão de nome (raríssima) resolve
+      completando com um pedaço do id.
+- [x] **`JobCard.jsx` com fundo customizado**: nova prop
+      `cardBackgroundUrl` — quando presente, mostra a imagem atrás do
+      card com um overlay escuro FIXO (não editável, de propósito —
+      garante o texto legível não importa que imagem a empresa suba)
+      e troca a paleta de texto pra tons claros. Card sem essa prop
+      continua idêntico ao de sempre — nenhuma mudança visual em
+      nenhum outro lugar do site.
+- [x] **Admin → Parceiros & Selos**: botão "Página Exclusiva"
+      (liga/desliga, ao lado dos botões de plano) — ao ligar, gera o
+      slug e mostra o link pronto (com botão Copiar) + uma zona de
+      upload pro fundo do card, com o tamanho recomendado (1200×628px)
+      escrito ali. Upload usa `resizeImageFile` (mesmo truque já usado
+      no banner de imagem do Admin — vira um data URL comprimido,
+      direto na coluna do banco, sem precisar de Supabase Storage).
+- [x] **`App.jsx`**: detecta `?empresa=slug` na URL (mesmo padrão já
+      usado pra `?tab=`) e resolve pro parceiro certo (só se
+      `pagina_exclusiva_ativa` ainda estiver ligada — parceiro
+      desativado depois faz o link parar de filtrar, sem quebrar
+      nada). O feed de vagas ganha esse filtro por cima dos filtros
+      normais (sexo/província/nihongo continuam funcionando DENTRO da
+      empresa filtrada), o banner do topo troca pro
+      `ExclusivePageBanner` (novo componente — mostra de quem é a
+      página + um link "Ver todas as vagas" que limpa o filtro e a
+      URL), e o `fundoCardUrl` da empresa é passado pra cada
+      `JobCard`. Menu principal (Vagas/Rankings/Calculadora/
+      Comunidade/Indicações) continua sempre visível e clicável — o
+      candidato nunca fica preso na página, é literalmente "um filtro
+      pré-aplicado", como o usuário descreveu.
+- [x] Vaga **preenchida** aparece normal nessa página (com o selo/
+      borrão que já existia) — não precisou de nenhum código novo pra
+      isso: `sortedJobs` (base do feed) nunca excluiu vaga preenchida,
+      só filtra rascunho/arquivada — foi uma descoberta boa, economizou
+      trabalho.
+- [x] **Área do Cliente → aba Início**: card novo em destaque
+      (`PaginaExclusivaShare.jsx`), primeira coisa da tela, só quando
+      `paginaExclusivaAtiva` — link + 4 botões: Compartilhar (Web
+      Share API nativa, cai pra copiar se não tiver), WhatsApp (abre
+      já com texto+link prontos), Facebook (abre a caixa de
+      compartilhamento oficial deles), Copiar link (Clipboard API →
+      fallback antigo → prompt, mesma cadeia de 3 camadas que o
+      "compartilhar vaga" do JobCard já usa).
+- [x] **Relatório de Desempenho**: lembrete novo no rodapé
+      ("📎 Não esqueça de compartilhar sua Página Exclusiva..."), só
+      pra quem já tem a página — sem número novo pra calcular (a
+      pedido: "só um lembrete"). Vai junto na imagem baixada, já que é
+      a empresa quem recebe esse relatório.
+- Testado em blocos, com o pipeline real do projeto: (1) `JobCard`
+  isolado com/sem fundo customizado lado a lado — legibilidade
+  confirmada visualmente; (2) toggle + upload no
+  `PartnerManagementModal` — slug gerado certo, preview da imagem
+  aparecendo; (3) **o app inteiro de ponta a ponta**, usando os dados
+  de exemplo do projeto (`EMPREITEIRA TESTE`) temporariamente marcada
+  com Página Exclusiva ativa: abri `?empresa=empreiteira-teste` de
+  verdade e confirmei banner trocado, só 1 vaga daquela empresa
+  aparecendo, menu principal continua clicável, "Ver todas as vagas"
+  limpa a URL e volta o feed completo — e reconfirmei que o fundo
+  customizado NÃO aparece pra essa mesma vaga fora da página exclusiva;
+  (4) `ClientDashboard` isolado — o card de compartilhar renderiza
+  certo, e o clique em "Copiar link" foi testado de verdade (Playwright
+  lendo o clipboard do navegador) confirmando a URL exata copiada.
+  `npm run build` limpo depois de restaurar `main.jsx` e `seedData.js`
+  aos originais (confirmado com `diff`).

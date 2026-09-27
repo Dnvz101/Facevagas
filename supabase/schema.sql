@@ -590,3 +590,16 @@ drop policy if exists "site_config_public_read" on public.site_config;
 create policy "site_config_public_read" on public.site_config for select using (true);
 -- Sem política de update pública de propósito — só a service role
 -- (via api/db-write.js, com sessão de Admin) grava aqui.
+
+-- =============================================================
+-- v26 — "Página Exclusiva": cada empreiteira pode ganhar um link
+-- público próprio (nihonvagas.jp/?empresa=<slug>) que mostra só as
+-- vagas dela, com um fundo de card customizado (imagem, guardada como
+-- data URL — mesmo truque já usado no banner de imagem do Admin, sem
+-- precisar de Supabase Storage). Liga/desliga por enquanto é manual
+-- (Admin, um por um) — pode virar parte de plano pago no futuro sem
+-- mudar essas colunas, só o jeito como elas são ligadas.
+-- =============================================================
+alter table public.parceiros add column if not exists pagina_exclusiva_ativa boolean not null default false;
+alter table public.parceiros add column if not exists pagina_exclusiva_slug text unique;
+alter table public.parceiros add column if not exists fundo_card_url text;

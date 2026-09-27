@@ -4,10 +4,11 @@
 // excluir).
 // ---------------------------------------------------------------
 
-import { useState, useMemo } from "react";
-import { Users, X, BadgeCheck, Settings, Trash2, MessageCircle, Eye, Heart, BarChart3, Loader2 } from "lucide-react";
+import { useState, useMemo, useRef } from "react";
+import { Users, X, BadgeCheck, Settings, Trash2, MessageCircle, Eye, Heart, BarChart3, Loader2, Link2, ImagePlus, Copy, Check } from "lucide-react";
 import { PARTNER_TYPES, partnerTypeLabel, partnerTypeEmoji } from "../config/partnerTypes.js";
 import { PLANOS_ORDER } from "../config/plans.js";
+import { resizeImageFile, gerarSlugUnico, CARD_BG_MAX_WIDTH, CARD_BG_MAX_HEIGHT } from "../utils/misc.js";
 import RelatorioDesempenho from "./RelatorioDesempenho.jsx";
 
 // Selo controlável + qual campo de cota do plano ele consome — usado
@@ -20,11 +21,14 @@ const SELO_COTA = [
   { key: "isUrgente", label: "Urgente", emoji: "⚡", cotaField: "cotaUrgente" },
 ];
 
-export default function PartnerManagementModal({ isOpen, onClose, registeredPartners, jobs, planos, onToggleVerificado, onChangePlano, onRename, onDelete, syncing = false }) {
+export default function PartnerManagementModal({ isOpen, onClose, registeredPartners, jobs, planos, onToggleVerificado, onChangePlano, onRename, onDelete, onTogglePaginaExclusiva, onSetFundoCard, syncing = false }) {
   const [filterTipo, setFilterTipo] = useState("todos"); // "todos" | "empreiteira" | "prestador" | "loja"
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [relatorioPartner, setRelatorioPartner] = useState(null); // parceiro com o modal de Relatório aberto, ou null
+  const [resizingFundoId, setResizingFundoId] = useState(null); // id do parceiro com upload de fundo em andamento, ou null
+  const [linkCopiedId, setLinkCopiedId] = useState(null);
+  const fileInputRefs = useRef({});
 
   const filtered = useMemo(
     () => (filterTipo === "todos" ? registeredPartners : registeredPartners.filter((p) => p.tipo === filterTipo)),
@@ -69,6 +73,44 @@ export default function PartnerManagementModal({ isOpen, onClose, registeredPart
       `Excluir "${p.name}"? O login dessa conta para de funcionar. As vagas/anúncios já publicados por ela NÃO são apagados — continuam no site, só sem uma conta associada. Essa ação não tem volta.`
     );
     if (ok) onDelete(p.id);
+  };
+
+  // Liga/desliga a Página Exclusiva. Ao ligar pela primeira vez, gera
+  // o slug (URL) — só nessa hora, nunca de novo depois, pra o link já
+  // compartilhado por essa empresa nunca quebrar mesmo que ela mude
+  // de nome mais tarde.
+  const handleTogglePaginaExclusiva = (p) => {
+    const ativarAgora = !p.paginaExclusivaAtiva;
+    const slug = p.paginaExclusivaSlug || (ativarAgora ? gerarSlugUnico(p.name, p.id, registeredPartners) : null);
+    onTogglePaginaExclusiva(p.id, ativarAgora, slug);
+  };
+
+  const handleFundoUpload = async (p, file) => {
+    if (!file) return;
+    setResizingFundoId(p.id);
+    try {
+      const dataUrl = await resizeImageFile(file, CARD_BG_MAX_WIDTH, CARD_BG_MAX_HEIGHT);
+      onSetFundoCard(p.id, dataUrl);
+    } catch (err) {
+      console.error("Falha ao processar imagem de fundo:", err);
+      window.alert("Não foi possível processar essa imagem. Tente outro arquivo.");
+    } finally {
+      setResizingFundoId(null);
+    }
+  };
+
+  const paginaExclusivaUrl = (slug) =>
+    typeof window !== "undefined" ? `${window.location.origin}/?empresa=${slug}` : `/?empresa=${slug}`;
+
+  const copiarLink = async (p) => {
+    const url = paginaExclusivaUrl(p.paginaExclusivaSlug);
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      window.prompt("Copie o link abaixo:", url);
+    }
+    setLinkCopiedId(p.id);
+    setTimeout(() => setLinkCopiedId(null), 2000);
   };
 
   if (!isOpen) return null;
@@ -233,7 +275,62 @@ export default function PartnerManagementModal({ isOpen, onClose, registeredPart
                           {planKey === "gratis" ? "Grátis" : planKey === "start" ? "Start" : planKey === "pro" ? "Pro" : "Master"}
                         </button>
                       ))}
+                      <button
+                        onClick={() => handleTogglePaginaExclusiva(p)}
+                        title="Ativar/desativar Página Exclusiva"
+                        className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                          p.paginaExclusivaAtiva ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-400"
+                        }`}
+                      >
+                        <Link2 className="h-2.5 w-2.5" /> Página Exclusiva
+                      </button>
                     </div>
+
+                    {/* Só aparece com a Página Exclusiva ligada — o link pra
+                        conferir/copiar, e o upload do fundo customizado do
+                        card (só usado NESSA página, nunca no feed normal). */}
+                    {p.paginaExclusivaAtiva && (
+                      <div className="mt-2.5 space-y-2 rounded-lg border border-indigo-100 bg-indigo-50/60 p-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <p className="nv-body min-w-0 flex-1 truncate text-[10.5px] text-indigo-700">
+                            {paginaExclusivaUrl(p.paginaExclusivaSlug)}
+                          </p>
+                          <button
+                            onClick={() => copiarLink(p)}
+                            className="flex flex-shrink-0 items-center gap-1 rounded-full bg-white px-2 py-1 text-[10px] font-bold text-indigo-700 shadow-sm"
+                          >
+                            {linkCopiedId === p.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                            {linkCopiedId === p.id ? "Copiado" : "Copiar"}
+                          </button>
+                        </div>
+
+                        <div
+                          onClick={() => fileInputRefs.current[p.id]?.click()}
+                          className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-indigo-200 bg-white px-2.5 py-2 hover:border-indigo-400"
+                        >
+                          {resizingFundoId === p.id ? (
+                            <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin text-indigo-500" />
+                          ) : p.fundoCardUrl ? (
+                            <img src={p.fundoCardUrl} alt="" className="h-8 w-14 flex-shrink-0 rounded object-cover" />
+                          ) : (
+                            <ImagePlus className="h-4 w-4 flex-shrink-0 text-slate-400" />
+                          )}
+                          <div className="min-w-0">
+                            <p className="nv-body truncate text-[10.5px] font-semibold text-slate-600">
+                              {resizingFundoId === p.id ? "Processando..." : p.fundoCardUrl ? "Trocar fundo do card" : "Enviar fundo do card (opcional)"}
+                            </p>
+                            <p className="nv-body text-[9.5px] text-slate-400">Recomendado: {CARD_BG_MAX_WIDTH}×{CARD_BG_MAX_HEIGHT}px</p>
+                          </div>
+                          <input
+                            ref={(el) => { fileInputRefs.current[p.id] = el; }}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleFundoUpload(p, e.target.files?.[0])}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}

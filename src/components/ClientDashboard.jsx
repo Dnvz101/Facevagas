@@ -18,6 +18,7 @@ import JobsTable from "./JobsTable.jsx";
 import PlanComparisonCards from "./PlanComparisonCards.jsx";
 import ClaimJobsModal from "./ClaimJobsModal.jsx";
 import PerformanceReportModal from "./PerformanceReportModal.jsx";
+import PaginaExclusivaShare from "./PaginaExclusivaShare.jsx";
 
 export default function ClientDashboard({ company, jobs, planos, registeredPartners, onPublish, onToggleBadge, onDelete, onClaimJobs, onTogglePreenchida, onTrackWhatsappSupport }) {
   const [clientTab, setClientTab] = useState("inicio");
@@ -161,6 +162,12 @@ export default function ClientDashboard({ company, jobs, planos, registeredPartn
 
       {clientTab === "inicio" && (
         <div className="space-y-4">
+          {/* Página Exclusiva — em destaque, primeira coisa na aba Início,
+              só quando o Admin já liberou pra essa empresa. */}
+          {company.paginaExclusivaAtiva && company.paginaExclusivaSlug && (
+            <PaginaExclusivaShare company={company} />
+          )}
+
           {/* 1) Resumo de métricas */}
           <div className="grid grid-cols-4 gap-2">
             <div className="rounded-2xl border border-slate-200 bg-white p-3 text-center">
