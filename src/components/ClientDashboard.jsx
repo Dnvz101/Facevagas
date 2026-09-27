@@ -134,6 +134,16 @@ export default function ClientDashboard({ company, jobs, planos, registeredPartn
     { key: "vagas", label: "Vagas", icon: Briefcase },
   ];
 
+  // Estrelinha reaproveitada de um efeito de botão que o usuário mandou
+  // como referência — mesmo SVG/traçado, só recolorida (azul/dourado
+  // da marca, em vez do laranja original) e reduzida de escala pra
+  // caber numa aba pequena em vez de um botão CTA grande.
+  const TabStar = ({ className, color }) => (
+    <svg viewBox="0 0 784.11 815.53" className={className} style={{ fill: color }}>
+      <path d="M392.05 0c-20.9,210.08-184.06,378.41-392.05,407.78 207.96,29.37 371.12,197.68 392.05,407.74 20.93-210.06 184.09-378.37 392.05-407.74-207.98-29.38-371.16-197.69-392.06-407.78z" />
+    </svg>
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -144,16 +154,42 @@ export default function ClientDashboard({ company, jobs, planos, registeredPartn
         </div>
       </div>
 
-      {/* Submenu interno — restrito a esta área, não mexe na navegação global */}
-      <div className="grid grid-cols-4 gap-1 rounded-2xl bg-slate-100 p-1">
+      {/* Submenu interno — restrito a esta área, não mexe na navegação global.
+          Fundo em degradê azul (em vez de cinza quase branco) pra não se
+          perder no branco do resto da página — pedido do usuário depois de
+          reparar que a barra "sumia" visualmente. */}
+      <div className="grid grid-cols-4 gap-1 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 p-1">
         {CLIENT_SECTIONS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setClientTab(key)}
-            className={`flex flex-col items-center gap-1 rounded-xl py-2 text-[11px] font-semibold transition-colors ${
-              clientTab === key ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+            className={`group relative flex flex-col items-center gap-1 overflow-visible rounded-xl py-2 text-[11px] font-semibold transition-colors ${
+              clientTab === key ? "bg-white text-blue-600 shadow-sm ring-1 ring-blue-200" : "text-blue-400/80 hover:text-blue-600"
             }`}
           >
+            {/* Estrelinhas só na aba do Publicador Mágico — voam pra fora no
+                hover, mesma técnica do componente de referência (várias
+                estrelas com posição/transição/atraso diferentes cada uma). */}
+            {key === "publicador" && (
+              <>
+                <TabStar
+                  color="#2563eb"
+                  className="pointer-events-none absolute left-[20%] top-[15%] z-[-1] w-3 opacity-0 transition-all duration-700 ease-out group-hover:left-[-15%] group-hover:top-[-60%] group-hover:z-[2] group-hover:opacity-90"
+                />
+                <TabStar
+                  color="#f59e0b"
+                  className="pointer-events-none absolute left-[50%] top-[30%] z-[-1] w-2 opacity-0 transition-all delay-75 duration-700 ease-out group-hover:left-[75%] group-hover:top-[-50%] group-hover:z-[2] group-hover:opacity-90"
+                />
+                <TabStar
+                  color="#2563eb"
+                  className="pointer-events-none absolute left-[35%] top-[40%] z-[-1] w-1.5 opacity-0 transition-all delay-150 duration-700 ease-out group-hover:left-[10%] group-hover:top-[65%] group-hover:z-[2] group-hover:opacity-90"
+                />
+                <TabStar
+                  color="#f59e0b"
+                  className="pointer-events-none absolute left-[60%] top-[45%] z-[-1] w-1.5 opacity-0 transition-all delay-200 duration-700 ease-out group-hover:left-[90%] group-hover:top-[55%] group-hover:z-[2] group-hover:opacity-90"
+                />
+              </>
+            )}
             <Icon className="h-4 w-4" /> {label}
           </button>
         ))}

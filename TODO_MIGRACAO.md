@@ -1588,3 +1588,24 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   menu, e confirmei — pela URL (voltou pra `/`, sem o `?empresa=`) e
   visualmente (banner normal, feed completo de novo) — que o fix
   funciona. `npm run build` limpo depois de restaurar `seedData.js`.
+## ⚪ v2.6.45 — Barra de abas da Área do Cliente com mais contraste + efeito de estrelas no Publicador
+- [x] A pedido: a barra Início/Publicador/Planos/Vagas
+      (`ClientDashboard.jsx`) tinha fundo cinza quase branco
+      (`bg-slate-100`) e "sumia" visualmente no resto da página, que
+      também é branca. Trocado por um degradê azul suave
+      (`from-blue-50 via-indigo-50 to-blue-50` + borda azul clara) —
+      aba ativa continua branca com destaque (like antes), só o
+      CONTAINER que ganhou cor de verdade.
+- [x] Efeito de estrelas (a partir de um componente de referência que
+      o usuário mandou, mesmo SVG/traçado da estrela) aplicado só no
+      botão "Publicador ✨" — 4 estrelinhas pequenas (em vez das 6 do
+      original, escala reduzida pra caber numa aba, não um botão CTA
+      grande) que ficam invisíveis paradas e voam pra fora ao passar o
+      mouse, recoloridas pra azul/dourado da marca em vez do
+      laranja/pêssego do componente original.
+- Testado com o pipeline real do projeto (`ClientDashboard` isolado):
+  capturei o estado normal (barra com o novo fundo azul, bem mais
+  visível contra o branco) e o estado de hover no botão Publicador
+  (Playwright `page.hover(...)`) — confirmado visualmente que as
+  estrelas aparecem voando pra fora, uma azul e uma dourada visíveis
+  na captura. `npm run build` limpo depois de restaurar o `main.jsx`.
