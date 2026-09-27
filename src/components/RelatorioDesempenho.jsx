@@ -16,7 +16,7 @@
 
 import { useRef, useState, useMemo } from "react";
 import html2canvas from "html2canvas";
-import { X, Download, Eye, MessageCircle, FolderOpen, TrendingUp, Loader2 } from "lucide-react";
+import { X, Download, Eye, MessageCircle, FolderOpen, TrendingUp, Loader2, Link2 } from "lucide-react";
 
 const MIN_SAMPLE = 3; // mínimo de vagas em cada grupo (com/sem selo) pra comparação aparecer
 
@@ -173,6 +173,18 @@ export default function RelatorioDesempenho({ partner, jobs, onClose }) {
     return phone ? `https://wa.me/${phone}?text=${texto}` : `https://wa.me/?text=${texto}`;
   };
 
+  // Mensagem separada, só pra lembrar a empresa da Página Exclusiva —
+  // não tem nada a ver com o relatório em si, por isso é um botão à
+  // parte (não faz sentido misturar as duas coisas na mesma mensagem).
+  const paginaExclusivaWhatsappLink = () => {
+    const phone = (partner.phoneJp || partner.phonePt || "").replace(/\D/g, "");
+    const url = typeof window !== "undefined" ? `${window.location.origin}/?empresa=${partner.paginaExclusivaSlug}` : "";
+    const texto = encodeURIComponent(
+      `Oi, ${partner.name}! Só lembrando: como te falei, sua empresa não precisa mais de um site — a gente já te deu um, de graça, e nunca vamos cobrar por isso. É a sua Página Exclusiva de vagas, só com as suas, separadas das demais, pra você divulgar direto pros seus candidatos:\n${url}`
+    );
+    return phone ? `https://wa.me/${phone}?text=${texto}` : `https://wa.me/?text=${texto}`;
+  };
+
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/60 p-0 sm:items-center sm:p-4" onClick={onClose}>
       <div
@@ -219,16 +231,21 @@ export default function RelatorioDesempenho({ partner, jobs, onClose }) {
 
             <div className="mt-4 bg-blue-50 px-4 py-3 text-center">
               <p className="nv-body text-[11px] font-medium text-blue-900">Continue publicando vagas atualizadas para manter seu desempenho.</p>
-              {/* Lembrete puro — sem número novo pra calcular (a pedido:
-                  "só um lembrete"), só aparece pra quem já tem a Página
-                  Exclusiva liberada, e vai JUNTO na imagem baixada, já
-                  que é a empresa quem recebe esse relatório por WhatsApp. */}
-              {partner.paginaExclusivaAtiva && (
-                <p className="nv-body mt-1 text-[10.5px] font-semibold text-indigo-600">
+            </div>
+            {/* Lembrete puro — sem número novo pra calcular (a pedido:
+                "só um lembrete"), só aparece pra quem já tem a Página
+                Exclusiva liberada, e vai JUNTO na imagem baixada, já
+                que é a empresa quem recebe esse relatório por WhatsApp.
+                Caixa separada (não mais só uma linha pequena dentro do
+                bloco azul) — pedido explícito pra ficar bem mais fácil
+                de ler na imagem final. */}
+            {partner.paginaExclusivaAtiva && (
+              <div className="bg-indigo-600 px-4 py-3.5 text-center">
+                <p className="nv-display text-[13.5px] font-extrabold leading-snug text-white">
                   📎 Não esqueça de compartilhar sua Página Exclusiva com seus candidatos!
                 </p>
-              )}
-            </div>
+              </div>
+            )}
           </div>
           {/* ---------- fim do que vira imagem ---------- */}
         </div>
@@ -250,6 +267,16 @@ export default function RelatorioDesempenho({ partner, jobs, onClose }) {
           >
             <MessageCircle className="h-4 w-4" /> Abrir WhatsApp de {partner.name.split(" ")[0]}
           </a>
+          {partner.paginaExclusivaAtiva && partner.paginaExclusivaSlug && (
+            <a
+              href={paginaExclusivaWhatsappLink()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="nv-body flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 py-2.5 text-[13px] font-bold text-indigo-700"
+            >
+              <Link2 className="h-4 w-4" /> Lembrar o cliente da Página Exclusiva
+            </a>
+          )}
           <p className="nv-body text-center text-[10.5px] text-slate-400">
             O WhatsApp não deixa anexar imagem direto pelo link — baixa primeiro, depois anexa a imagem na conversa que abrir.
           </p>

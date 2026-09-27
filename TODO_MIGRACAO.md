@@ -1468,3 +1468,26 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   lendo o clipboard do navegador) confirmando a URL exata copiada.
   `npm run build` limpo depois de restaurar `main.jsx` e `seedData.js`
   aos originais (confirmado com `diff`).
+## ⚪ v2.6.41 — Relatório de Desempenho: lembrete maior + botão de mensagem pronta pra Página Exclusiva
+- [x] A pedido: o lembrete da Página Exclusiva
+      (`RelatorioDesempenho.jsx`) estava pequeno demais, difícil de
+      ler na imagem gerada. Virou um bloco roxo de destaque próprio
+      (fundo sólido, texto branco, negrito, fonte maior) em vez de uma
+      linha pequena dentro do bloco azul de baixo — igual pedido: "com
+      mais ênfase".
+- [x] Botão novo, "Lembrar o cliente da Página Exclusiva", ao lado do
+      "Abrir WhatsApp de [Nome]" que já existia — mensagem pré-pronta
+      específica (não é o texto do relatório): "sua empresa não
+      precisa mais de um site — a gente já te deu um, de graça, e
+      nunca vamos cobrar por isso. É a sua Página Exclusiva de vagas,
+      só com as suas, separadas das demais, pra você divulgar direto
+      pros seus candidatos:" + o link de verdade da página dela. Só
+      aparece pra quem já tem a Página Exclusiva ativa.
+- Testado com o pipeline real: preview na tela confirmando o bloco
+  roxo bem mais legível; inspecionei o `href` do botão novo ANTES de
+  clicar (evita abrir aba nova em teste automatizado) e confirmei a
+  mensagem decodificada batendo exatamente com o texto e o link
+  esperados, telefone da empresa puxado certo; baixei a imagem de
+  verdade (não só a pré-visualização) e conferi que o bloco roxo sai
+  igualzinho no PNG final. `npm run build` limpo depois de restaurar
+  o `main.jsx`.
