@@ -1,3 +1,20 @@
+// Número local japonês (090-1234-5678, ou só dígitos) -> dígitos no
+// formato internacional que o wa.me exige (81 + resto, sem o 0 do
+// início). Extraído daqui (antes só existia dentro de
+// toWhatsAppLink) porque mais de um lugar do site monta um link de
+// WhatsApp a partir do telefone cadastrado do PARCEIRO (não de vaga) —
+// ClientDashboard.jsx (Fale Conosco) e RelatorioDesempenho.jsx (Admin
+// mandando relatório/lembrete pra empresa). Ter um só lugar pra essa
+// conversão evita o que já aconteceu uma vez: um desses lugares
+// esquecer de converter e gerar um link que o WhatsApp rejeita
+// ("número não está no WhatsApp") por estar em formato local, não
+// internacional.
+export function toIntlPhoneDigits(raw) {
+  const digits = (raw || "").replace(/\D/g, "");
+  if (!digits) return "";
+  return digits.startsWith("81") && digits.length >= 12 ? digits : `81${digits.startsWith("0") ? digits.slice(1) : digits}`;
+}
+
 export function toWhatsAppLink(raw, cargo) {
   if (!raw) return null;
   // o scraper às vezes já entrega o link pronto (com mensagem de
@@ -26,9 +43,7 @@ export function toWhatsAppLink(raw, cargo) {
     if (!digits) return null;
     // Já vem com o código do Japão (ex: alguém digitou "819012345678")?
     // Usa direto, sem prefixar de novo — senão viraria "81819012345678".
-    base = digits.startsWith("81") && digits.length >= 12
-      ? `https://wa.me/${digits}`
-      : `https://wa.me/81${digits.startsWith("0") ? digits.slice(1) : digits}`;
+    base = `https://wa.me/${toIntlPhoneDigits(raw)}`;
   }
   // Mensagem pré-preenchida "veio do NihonVagas" — só quando quem
   // chamou passou o cargo (candidato falando com a empresa sobre UMA

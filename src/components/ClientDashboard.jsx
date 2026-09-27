@@ -10,7 +10,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContain
 import { usePermissions } from "../hooks/usePermissions.js";
 import { computeBadgeStats } from "../utils/stats.js";
 import { localDateKey } from "../utils/misc.js";
-import { ADMIN_WHATSAPP_RAW } from "../utils/format.js";
+import { ADMIN_WHATSAPP_RAW, toIntlPhoneDigits } from "../utils/format.js";
 import { safeCidade } from "../utils/jobParsing.js";
 import { partnerTypeEmoji } from "../config/partnerTypes.js";
 import AIPublisher from "./AIPublisher.jsx";
@@ -58,8 +58,7 @@ export default function ClientDashboard({ company, jobs, planos, registeredPartn
   // contato, pra você não precisar perguntar quem está falando.
   const SUPPORT_WHATSAPP_RAW = ADMIN_WHATSAPP_RAW;
   const supportWaLink = useMemo(() => {
-    const digits = SUPPORT_WHATSAPP_RAW.replace(/\D/g, "");
-    const intl = digits.startsWith("0") ? `81${digits.slice(1)}` : digits;
+    const intl = toIntlPhoneDigits(SUPPORT_WHATSAPP_RAW);
     const message = encodeURIComponent(
       `Olá! Sou da empresa ${company.name} (cliente NihonVagas.jp) e gostaria de falar sobre o sistema.`
     );

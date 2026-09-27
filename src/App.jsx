@@ -1685,7 +1685,7 @@ export default function App() {
 
             {adminTab === "vagas" && (
               <div className="space-y-5">
-                <JSONImporter dbStatus={dbStatus} jobs={jobs} onImported={handleBulkImport} />
+                <JSONImporter dbStatus={dbStatus} jobs={jobs} registeredPartners={registeredPartners} onImported={handleBulkImport} />
 
                 <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
                   <p className="nv-display flex items-center gap-1.5 text-[13px] font-bold text-amber-800">

@@ -15,7 +15,7 @@ import { mapScrapedJob, jobFingerprint, uid } from "../utils/jobParsing.js";
 import { formatYen } from "../utils/format.js";
 import { insertJobsBulkToDB, updateJobInDB } from "../lib/supabase.js";
 
-export default function JSONImporter({ dbStatus, jobs, onImported }) {
+export default function JSONImporter({ dbStatus, jobs, registeredPartners = [], onImported }) {
   const [parsing, setParsing] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [preview, setPreview] = useState(null); // array de itens de revisão, ou null (mostra o dropzone)
@@ -57,12 +57,22 @@ export default function JSONImporter({ dbStatus, jobs, onImported }) {
         const semTitulo = !nj.cargo;
         const semSalario = !nj.salarioHora; // parseSalaryRange sempre devolve número — 0 quando não achou nenhum valor
         const semContato = !nj.whatsapp && !nj.telefone; // sem os dois, a vaga publicada não tem NENHUM botão de contato
+        // Vaga já reivindicada por uma empresa cadastrada (o "elo" entre
+        // vaga e empresa é só o campo empresa batendo com o nome oficial
+        // dela — não existe um id de dono). Achado num bug reportado: sem
+        // essa checagem, re-importar essa MESMA vaga (o scraper re-capturou
+        // o mesmo post) sobrescrevia empresa/telefone/whatsapp/verificado de
+        // volta pro valor cru do Facebook, desfazendo a reivindicação sem
+        // avisar — a vaga sumia de "Minhas Vagas" da empresa (que filtra
+        // por nome batendo) mesmo sem ser apagada de verdade.
+        const claimedByPartner = !!existing && registeredPartners.some((p) => p.name === existing.empresa);
         return {
           key: uid(),
           checked: !(semTitulo || semSalario || semContato), // sem título, sem salário ou sem contato já entra DESMARCADA — precisa decisão explícita de manter
           mapped: nj,
           isUpdate: !!existing,
           existingId: existing?.id || null,
+          claimedByPartner,
           semTitulo,
           semSalario,
           semContato,
@@ -99,7 +109,22 @@ export default function JSONImporter({ dbStatus, jobs, onImported }) {
     setError(null);
     try {
       const toInsert = selecionadas.filter((it) => !it.isUpdate).map((it) => it.mapped);
-      const toUpdate = selecionadas.filter((it) => it.isUpdate).map((it) => ({ id: it.existingId, patch: { ...it.mapped, id: undefined, arquivada: false } }));
+      const toUpdate = selecionadas
+        .filter((it) => it.isUpdate)
+        .map((it) => {
+          const patch = { ...it.mapped, id: undefined, arquivada: false };
+          // Vaga já reivindicada: NUNCA sobrescreve empresa/contato/selo
+          // com o que veio cru do scrape — deletar a chave (em vez de só
+          // não mandar) faz o updateJob (PATCH parcial) nem tocar nessas
+          // colunas, preservando o que a empresa/Admin já configurou.
+          if (it.claimedByPartner) {
+            delete patch.empresa;
+            delete patch.telefone;
+            delete patch.whatsapp;
+            delete patch.seloVerificado;
+          }
+          return { id: it.existingId, patch };
+        });
 
       if (dbStatus === "connected") {
         const insertedSaved = toInsert.length ? await insertJobsBulkToDB(toInsert) : [];
@@ -207,6 +232,11 @@ export default function JSONImporter({ dbStatus, jobs, onImported }) {
                     <p className="nv-body truncate text-[12.5px] font-semibold text-slate-800">
                       {it.mapped.cargo || <span className="italic text-amber-600">Sem título</span>}
                       {it.isUpdate && <span className="ml-1.5 rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-bold uppercase text-blue-600">Atualização</span>}
+                      {it.claimedByPartner && (
+                        <span className="ml-1.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9.5px] font-bold uppercase text-emerald-600" title="Empresa/telefone/WhatsApp/Verificado não serão sobrescritos">
+                          🔒 Reivindicada
+                        </span>
+                      )}
                     </p>
                     <p className="nv-body truncate text-[11px] text-slate-400">
                       {it.mapped.empresa || "Empresa não identificada"}

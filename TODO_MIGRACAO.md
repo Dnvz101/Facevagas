@@ -1491,3 +1491,78 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   verdade (não só a pré-visualização) e conferi que o bloco roxo sai
   igualzinho no PNG final. `npm run build` limpo depois de restaurar
   o `main.jsx`.
+## 🔴 v2.6.42 — Fix: link do WhatsApp no Relatório abria número errado (formato local, não internacional)
+- [x] Usuário mandou print do WhatsApp recusando o número: "O nome de
+      usuário '@09063345122' não está no WhatsApp." — o link gerado
+      pelos botões do `RelatorioDesempenho.jsx` estava usando o
+      telefone da empresa em formato LOCAL japonês (`09063345122`,
+      começando com 0), mas o `wa.me` exige formato internacional
+      (código do país + número, sem o 0 — `819063345122`).
+- [x] Causa: os dois botões que eu criei (`whatsappLink` na v2.6.33 e
+      `paginaExclusivaWhatsappLink` na v2.6.41) só tiravam os
+      caracteres não-numéricos do telefone (`.replace(/\D/g, "")`),
+      sem fazer a conversão local→internacional que **já existia**
+      em DOIS outros lugares do projeto (`format.js`'s
+      `toWhatsAppLink`, usado nos cards de vaga, e
+      `ClientDashboard.jsx`'s `supportWaLink`, o "Fale Conosco") — eu
+      simplesmente esqueci de reaproveitar essa lógica ao escrever os
+      botões novos.
+- [x] Corrigido de vez: extraída uma função só,
+      `toIntlPhoneDigits(raw)`, em `format.js` — e os TRÊS lugares
+      (`toWhatsAppLink`, `ClientDashboard.jsx`'s `supportWaLink`, e os
+      dois links novos do `RelatorioDesempenho.jsx`) agora chamam a
+      mesma função, em vez de cada um ter sua própria cópia da
+      conversão "se começar com 0, troca por 81". Assim, se precisar
+      corrigir de novo no futuro (outro país, outro formato), é um
+      lugar só — não tem como esquecer de atualizar um dos lugares de
+      novo.
+- Testado com o número exato do print do usuário
+  ("Pin.to.Vision Group (Josi)", telefone `09063345122`): os dois
+  links (`Abrir WhatsApp de...` e `Lembrar o cliente da Página
+  Exclusiva`) inspecionados diretamente (sem precisar abrir o
+  WhatsApp de verdade) — confirmado que os dois agora geram
+  `wa.me/819063345122`, formato correto. `npm run build` limpo
+  depois de restaurar o `main.jsx`.
+## 🔴 v2.6.43 — Fix: reimportar JSON desfazia a reivindicação de vagas
+- [x] Usuário reportou: reivindica vaga normal, mas ao importar
+      QUALQUER JSON depois, as vagas reivindicadas "somem". Não eram
+      apagadas de verdade — voltavam a ficar órfãs (perdiam a
+      associação com a empresa).
+- [x] Causa: reivindicar uma vaga só troca o campo `empresa` dela pro
+      nome oficial cadastrado (+ telefone/WhatsApp/selo) — não existe
+      um "dono" separado, é só esse texto batendo com o nome do
+      parceiro (é assim que "Minhas Vagas" da empresa filtra o que é
+      dela). Quando o scraper re-capturava essa MESMA vaga depois (o
+      `JSONImporter` reconhece pelo `url_original`, que não muda), a
+      atualização reescrevia `empresa`/`telefone`/`whatsapp`/
+      `seloVerificado` de volta pro valor CRU do Facebook — desfazendo
+      a reivindicação sem avisar. Como o nome voltava a ser o
+      informal/errado, a vaga parava de bater com o filtro de "Minhas
+      Vagas" da empresa — daí o "sumiço".
+- [x] Corrigido em `JSONImporter.jsx`: cada vaga da revisão agora
+      calcula `claimedByPartner` (o `empresa` da vaga já existente
+      bate com o nome de algum parceiro cadastrado?). Se sim, na hora
+      de montar a atualização, os 4 campos
+      (`empresa`/`telefone`/`whatsapp`/`seloVerificado`) são
+      **removidos** do patch antes de mandar pro banco — como
+      `updateJob` já faz PATCH parcial (só toca coluna que está no
+      pacote, comportamento confirmado na v2.6.39), essas colunas
+      ficam intocadas, preservando a reivindicação. O resto (cargo,
+      salário, turno, `lastSeenAt` etc.) continua atualizando normal —
+      a vaga continua fresca e protegida contra arquivamento por
+      "vaga velha".
+- [x] Adicionado selo "🔒 Reivindicada" na lista de revisão, ao lado
+      de "Atualização", pra ficar visível quando essa proteção
+      entra em ação.
+- Testado reproduzindo o bug exato antes de corrigir: vaga "existente"
+  simulada com `empresa` já trocado pro nome oficial + telefone/selo
+  de reivindicação, e um JSON de reimportação com o MESMO
+  `url_original` mas `empresa`/`telefone` crus (diferentes,
+  simulando o que o Facebook realmente entregaria). Confirmado: (1)
+  o selo "🔒 Reivindicada" aparece na tela de revisão; (2) inspecionando
+  o objeto de patch enviado de verdade (antes de existir Supabase
+  real nesse teste), `empresa`, `telefone`, `whatsapp` e
+  `seloVerificado` **não aparecem no pacote** — enquanto `cargo`,
+  `cidade`, `salarioHora` (atualizado) e `lastSeenAt` (renovado)
+  continuam presentes normalmente. `npm run build` limpo depois de
+  restaurar o `main.jsx`.

@@ -17,6 +17,7 @@
 import { useRef, useState, useMemo } from "react";
 import html2canvas from "html2canvas";
 import { X, Download, Eye, MessageCircle, FolderOpen, TrendingUp, Loader2, Link2 } from "lucide-react";
+import { toIntlPhoneDigits } from "../utils/format.js";
 
 const MIN_SAMPLE = 3; // mínimo de vagas em cada grupo (com/sem selo) pra comparação aparecer
 
@@ -166,7 +167,12 @@ export default function RelatorioDesempenho({ partner, jobs, onClose }) {
   };
 
   const whatsappLink = () => {
-    const phone = (partner.phoneJp || partner.phonePt || "").replace(/\D/g, "");
+    // phonePt (número no Brasil, sem código do Japão) nunca serviria
+    // pra um link wa.me de qualquer forma — só phoneJp é o telefone
+    // de verdade dela NO Japão. Mantido o fallback pra phonePt só
+    // pra não quebrar quem só tinha esse campo preenchido; o
+    // toIntlPhoneDigits trata os dois do mesmo jeito.
+    const phone = toIntlPhoneDigits(partner.phoneJp || partner.phonePt);
     const texto = encodeURIComponent(
       `Olá, ${partner.name}! Segue o relatório de desempenho das suas vagas no NihonVagas.jp (${dados.periodoLabel}). Vou anexar a imagem aqui em seguida.`
     );
@@ -177,7 +183,7 @@ export default function RelatorioDesempenho({ partner, jobs, onClose }) {
   // não tem nada a ver com o relatório em si, por isso é um botão à
   // parte (não faz sentido misturar as duas coisas na mesma mensagem).
   const paginaExclusivaWhatsappLink = () => {
-    const phone = (partner.phoneJp || partner.phonePt || "").replace(/\D/g, "");
+    const phone = toIntlPhoneDigits(partner.phoneJp || partner.phonePt);
     const url = typeof window !== "undefined" ? `${window.location.origin}/?empresa=${partner.paginaExclusivaSlug}` : "";
     const texto = encodeURIComponent(
       `Oi, ${partner.name}! Só lembrando: como te falei, sua empresa não precisa mais de um site — a gente já te deu um, de graça, e nunca vamos cobrar por isso. É a sua Página Exclusiva de vagas, só com as suas, separadas das demais, pra você divulgar direto pros seus candidatos:\n${url}`
