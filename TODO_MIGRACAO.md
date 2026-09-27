@@ -1566,3 +1566,25 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   `cidade`, `salarioHora` (atualizado) e `lastSeenAt` (renovado)
   continuam presentes normalmente. `npm run build` limpo depois de
   restaurar o `main.jsx`.
+## 🟡 v2.6.44 — Fix: clicar em "Vagas" não saía da Página Exclusiva
+- [x] Usuário reportou: na Página Exclusiva, clicar no ícone "Vagas"
+      do menu principal não voltava pro feed completo do site como
+      deveria.
+- [x] Causa: o filtro da Página Exclusiva (`exclusiveEmpresaSlug`) é
+      um estado separado da aba (`tab`) — e como essa página já É a
+      aba "vagas", clicar em "Vagas" de novo não muda o valor de
+      `tab` (já era "vagas"), então nada disparava, e o filtro
+      continuava preso.
+- [x] Corrigido: clicar em QUALQUER item do menu principal agora
+      também limpa a Página Exclusiva (se estiver ativa) antes de
+      trocar de aba — não só "Vagas". Faz sentido pros outros itens
+      também: se o candidato clicar em "Comunidade" ou "Indicações"
+      vindo da Página Exclusiva e depois quiser voltar em "Vagas",
+      é esperado ver o feed completo, não a página filtrada de novo.
+- Testado com o app inteiro rodando de verdade (mesmo truque de antes:
+  `EMPREITEIRA TESTE` marcada temporariamente com Página Exclusiva
+  ativa, restaurado depois): abri `?empresa=empreiteira-teste`,
+  confirmei o banner e filtro ativos, cliquei no botão "Vagas" do
+  menu, e confirmei — pela URL (voltou pra `/`, sem o `?empresa=`) e
+  visualmente (banner normal, feed completo de novo) — que o fix
+  funciona. `npm run build` limpo depois de restaurar `seedData.js`.

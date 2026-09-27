@@ -1506,7 +1506,15 @@ export default function App() {
             {tabs.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
-                onClick={() => setTab(key)}
+                onClick={() => {
+                  // Clicar em QUALQUER item do menu principal sai da Página
+                  // Exclusiva — sem isso, clicar em "Vagas" (a aba onde a
+                  // Página Exclusiva também vive) não fazia nada, porque a
+                  // aba já era "vagas": só o setTab não muda nada quando o
+                  // valor já é o mesmo, e o filtro ficava preso.
+                  if (exclusiveEmpresaSlug) clearExclusivePage();
+                  setTab(key);
+                }}
                 className={`flex min-w-0 flex-col items-center gap-1 rounded-xl px-0.5 py-2 text-[10.5px] font-semibold leading-tight transition-colors ${
                   tab === key ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
                 }`}
