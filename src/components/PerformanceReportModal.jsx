@@ -42,7 +42,7 @@ export default function PerformanceReportModal({
             <div className="mb-4 grid grid-cols-3 gap-2 text-center">
               <div className="rounded-xl bg-slate-50 p-2.5">
                 <p className="nv-display text-[16px] font-extrabold text-slate-900">{totalViews}</p>
-                <p className="nv-body text-[9px] text-slate-500">Visualizações</p>
+                <p className="nv-body text-[9px] text-slate-500">Exibições no feed</p>
               </div>
               <div className="rounded-xl bg-slate-50 p-2.5">
                 <p className="nv-display text-[16px] font-extrabold text-emerald-600">{totalContacts}</p>
@@ -57,7 +57,7 @@ export default function PerformanceReportModal({
             <div className="mb-4 grid grid-cols-2 gap-2 text-center">
               <div className="rounded-xl bg-slate-50 p-2.5">
                 <p className="nv-display text-[16px] font-extrabold text-indigo-600">{conversionRate === null ? "—" : `${conversionRate}%`}</p>
-                <p className="nv-body text-[9px] text-slate-500">Taxa de Conversão (contatos/visualizações)</p>
+                <p className="nv-body text-[9px] text-slate-500">Taxa de Conversão (contatos/exibições)</p>
               </div>
               <div className="rounded-xl bg-slate-50 p-2.5">
                 <p className="nv-display text-[16px] font-extrabold text-rose-600">{totalFavorites}</p>
@@ -89,7 +89,7 @@ export default function PerformanceReportModal({
                   <XAxis dataKey="date" tick={{ fontSize: 8, fill: "#94a3b8" }} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 8, fill: "#94a3b8" }} axisLine={false} tickLine={false} width={22} />
                   <Legend wrapperStyle={{ fontSize: 9 }} />
-                  <Line type="monotone" dataKey="Visualizações" stroke="#64748b" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Exibições" stroke="#64748b" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="Contatos" stroke="#10b981" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>

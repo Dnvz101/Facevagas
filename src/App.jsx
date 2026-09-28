@@ -847,7 +847,9 @@ export default function App() {
     );
   };
 
-  // Visualizações — conta 1 por montagem do JobCard no feed público (ver
+  // "views" = EXIBIÇÕES no feed (aparece na tela pro visitante como "Exibições"), NÃO pessoas:
+  // o feed carrega 50 vagas por página, então cada visita gera até ~50 registros de uma vez.
+  // Conta 1 por montagem do JobCard no feed público (ver
   // useEffect em JobCard), 1 por sessão por vaga (viewedRef). Agora
   // também persiste (antes só existia localmente/por sessão) e alimenta
   // o histórico diário — base do Gráfico de Evolução.

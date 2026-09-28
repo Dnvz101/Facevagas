@@ -63,7 +63,7 @@ export default function StatsDashboard({ siteStats, jobs }) {
           {impactPromovidos === null ? "Ainda sem dados suficientes" : `Cards promovidos recebem ${impactPromovidos.toFixed(1)}x mais cliques`}
         </p>
         <p className="nv-body mb-3 text-[10.5px] text-indigo-500">
-          Compara a taxa de contato (cliques/visualizações) de vagas com pelo menos 1 selo ativo vs. vagas sem nenhum selo.
+          Compara a taxa de contato (cliques/exibições) de vagas com pelo menos 1 selo ativo vs. vagas sem nenhum selo.
         </p>
         <div className="grid grid-cols-2 gap-2">
           {impactBadges.map((b) => (

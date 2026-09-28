@@ -241,7 +241,7 @@ export default function RelatorioDesempenho({ partner, jobs, onClose }) {
             </div>
 
             <div className="grid grid-cols-2 gap-2.5 p-4">
-              <StatCard icon={Eye} label="Visualizações" value={dados.views.toLocaleString("pt-BR")} growth={dados.crescViews} />
+              <StatCard icon={Eye} label="Exibições no feed" value={dados.views.toLocaleString("pt-BR")} growth={dados.crescViews} />
               <StatCard icon={MessageCircle} label="Cliques no WhatsApp" value={dados.clicks.toLocaleString("pt-BR")} growth={dados.crescClicks} />
               <StatCard
                 icon={FolderOpen}
@@ -255,7 +255,7 @@ export default function RelatorioDesempenho({ partner, jobs, onClose }) {
             {dados.temAlgumSelo && !partner.naoCadastrada && (
               <div className="border-t border-slate-100 px-4 pb-1 pt-3">
                 <p className="nv-display text-[13px] font-bold text-slate-900">O poder de cada selo</p>
-                <SeloRow label="🔥 Vagas com Destaque" comp={dados.selos.destaque} unidade="visualizações" />
+                <SeloRow label="🔥 Vagas com Destaque" comp={dados.selos.destaque} unidade="exibições no feed" />
                 <SeloRow label="⭐ Vagas Recomendadas" comp={dados.selos.recomendado} unidade="cliques" />
                 <SeloRow label="✔️ Vagas Verificadas" comp={dados.selos.verificado} unidade="taxa de contato" />
               </div>

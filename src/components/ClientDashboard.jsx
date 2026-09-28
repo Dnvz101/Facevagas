@@ -111,11 +111,11 @@ export default function ClientDashboard({ company, jobs, planos, registeredPartn
           clicks += stat.clicks || 0;
         }
       });
-      days.push({ date: `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`, Visualizações: views, Contatos: clicks });
+      days.push({ date: `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`, Exibições: views, Contatos: clicks });
     }
     return days;
   }, [companyJobs]);
-  const hasEvolutionData = evolutionData.some((d) => d.Visualizações > 0 || d.Contatos > 0);
+  const hasEvolutionData = evolutionData.some((d) => d.Exibições > 0 || d.Contatos > 0);
 
   const [reportOpen, setReportOpen] = useState(false);
 
@@ -208,7 +208,7 @@ export default function ClientDashboard({ company, jobs, planos, registeredPartn
             <div className="rounded-2xl border border-slate-200 bg-white p-3 text-center">
               <p className="nv-display text-[18px] font-extrabold text-slate-900">{totalViews}</p>
               <p className="nv-body flex items-center justify-center gap-1 text-[9px] font-medium text-slate-500">
-                <Eye className="h-3 w-3 flex-shrink-0" /> Visualizações
+                <Eye className="h-3 w-3 flex-shrink-0" /> Exibições
               </p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-3 text-center">
@@ -285,7 +285,7 @@ export default function ClientDashboard({ company, jobs, planos, registeredPartn
                       <YAxis allowDecimals={false} tick={{ fontSize: 9, fill: "#94a3b8" }} axisLine={false} tickLine={false} width={24} />
                       <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e2e8f0" }} />
                       <Legend wrapperStyle={{ fontSize: 10 }} />
-                      <Line type="monotone" dataKey="Visualizações" stroke="#64748b" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="Exibições" stroke="#64748b" strokeWidth={2} dot={false} />
                       <Line type="monotone" dataKey="Contatos" stroke="#10b981" strokeWidth={2} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>

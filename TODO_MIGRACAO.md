@@ -1657,3 +1657,30 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   1 ativa = 7.738; mês anterior 37 views): "Vagas divulgadas 13", nenhuma
   comparação aparece. Empresa cadastrada (450/45 vs 250/15) continua
   com as 3 comparações. `npm run build` limpo, `main.jsx` restaurado.
+## ⚪ v2.6.48 — "Visualizações" virou "Exibições" (era um nome que enganava)
+- [x] Motivo: relatório da Fujiarte mostrou 7.738 "visualizações" com
+      o site tendo < 2.000 visitantes no total. Conferido no código:
+      `views` conta 1 por MONTAGEM do `JobCard` no feed (não quando
+      alguém olha/rola até ele), 1 por sessão por vaga — e o feed
+      carrega 50 vagas por página (`JOBS_PER_PAGE`). Ou seja, uma
+      visita gera até ~50 registros de uma vez. O número é
+      "exibições no feed", não pessoas. O dado mais sólido de contato
+      são os cliques no WhatsApp.
+- [x] Renomeado só o texto visível (nada de banco/campo interno):
+      relatório em imagem ("Exibições no feed", inclusive na frase do
+      poder do selo), painel do cliente (KPI "Exibições" + chave e
+      legenda do gráfico de evolução), relatório em PDF do cliente
+      ("Exibições no feed", "contatos/exibições" e a chave do gráfico —
+      renomeada nos dois arquivos juntos, porque o dado passa de um
+      pro outro) e o texto explicativo do painel de estatísticas.
+      Comentário em `App.jsx` no `handleJobView` explicando a pegadinha.
+- [ ] Ideia futura (NÃO feita, de propósito): contar só quando o card
+      aparece na tela de verdade (IntersectionObserver). Dá um número
+      bem mais honesto, mas cai muito e quebra a comparação com o
+      histórico — só vale fazer junto com um recomeço deliberado da base.
+- Testado: painel do cliente (KPI + gráfico com 14 dias de dados
+  desenhou, sem erro de JS), modal do PDF (rótulos novos e gráfico
+  desenhando) e relatório em imagem (rótulo + frase do selo); nenhuma
+  sobra de "Visualizações" na interface (exceto "Pré-visualização",
+  que é outra coisa). Sem mudança de banco. `npm run build` limpo com
+  `main.jsx` restaurado.
