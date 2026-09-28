@@ -41,8 +41,13 @@ function somaPeriodo(vagas, inicio, fim) {
   return { views, clicks };
 }
 
-function pctCrescimento(atual, anterior) {
-  if (anterior <= 0) return null; // sem base de comparação — não inventa percentual
+// Só compara quando o período anterior tem base MÍNIMA — senão sai
+// percentual absurdo ("↑ 20814%": 37 visualizações no mês anterior
+// contra 7.738 neste, o que é o rastreio começando, não crescimento).
+// Pra quem vai mandar isso a um cliente, sem número é melhor que número
+// que parece erro.
+function pctCrescimento(atual, anterior, baseMinima) {
+  if (anterior < baseMinima) return null;
   return Math.round(((atual - anterior) / anterior) * 100);
 }
 
@@ -124,6 +129,16 @@ export default function RelatorioDesempenho({ partner, jobs, onClose }) {
     const anterior = somaPeriodo(vagasDoParceiro, ymd(inicioAnterior), ymd(fimAnterior));
 
     const vagasAtivas = vagasDoParceiro.filter((j) => !j.preenchida && !j.arquivada).length;
+    // "Divulgadas": vaga ativa hoje OU que teve visualização/clique no
+    // período. Vaga do scraper que saiu da fonte é arquivada sozinha (9
+    // dias sem reaparecer), então só "ativas" deixava um relatório com
+    // milhares de visualizações e 1 vaga — parecia erro.
+    const iniStr = ymd(inicioMes), fimStr = ymd(hoje);
+    const vagasDivulgadas = vagasDoParceiro.filter(
+      (j) =>
+        (!j.preenchida && !j.arquivada) ||
+        Object.entries(j.dailyStats || {}).some(([d, st]) => d >= iniStr && d <= fimStr && ((st.views || 0) > 0 || (st.clicks || 0) > 0))
+    ).length;
     const taxaContato = atual.views > 0 ? (atual.clicks / atual.views) * 100 : 0;
     const taxaContatoAnterior = anterior.views > 0 ? (anterior.clicks / anterior.views) * 100 : null;
 
@@ -139,10 +154,14 @@ export default function RelatorioDesempenho({ partner, jobs, onClose }) {
       views: atual.views,
       clicks: atual.clicks,
       vagasAtivas,
+      vagasDivulgadas,
       taxaContato,
-      crescViews: pctCrescimento(atual.views, anterior.views),
-      crescClicks: pctCrescimento(atual.clicks, anterior.clicks),
-      crescTaxa: taxaContatoAnterior !== null ? Math.round(taxaContato - taxaContatoAnterior) : null,
+      crescViews: pctCrescimento(atual.views, anterior.views, 50),
+      crescClicks: pctCrescimento(atual.clicks, anterior.clicks, 10),
+      // diferença em pontos percentuais; "↑ 0%" não diz nada, então some
+      crescTaxa: taxaContatoAnterior !== null && anterior.views >= 50 && Math.round(taxaContato - taxaContatoAnterior) !== 0
+        ? Math.round(taxaContato - taxaContatoAnterior)
+        : null,
       selos,
       temAlgumSelo: !!(selos.destaque || selos.recomendado || selos.verificado),
     };
@@ -224,7 +243,12 @@ export default function RelatorioDesempenho({ partner, jobs, onClose }) {
             <div className="grid grid-cols-2 gap-2.5 p-4">
               <StatCard icon={Eye} label="Visualizações" value={dados.views.toLocaleString("pt-BR")} growth={dados.crescViews} />
               <StatCard icon={MessageCircle} label="Cliques no WhatsApp" value={dados.clicks.toLocaleString("pt-BR")} growth={dados.crescClicks} />
-              <StatCard icon={FolderOpen} label="Vagas ativas" value={dados.vagasAtivas} growth={null} />
+              <StatCard
+                icon={FolderOpen}
+                label={partner.naoCadastrada ? "Vagas divulgadas" : "Vagas ativas"}
+                value={partner.naoCadastrada ? dados.vagasDivulgadas : dados.vagasAtivas}
+                growth={null}
+              />
               <StatCard icon={TrendingUp} label="Taxa de contato" value={`${dados.taxaContato.toFixed(1)}%`} growth={dados.crescTaxa} />
             </div>
 

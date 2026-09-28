@@ -1634,3 +1634,26 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   cadastrada não retorna nada; relatório de parceiro cadastrado
   reconferido (rodapé antigo, WhatsApp presentes). Sem mudança de
   banco. `npm run build` limpo com `main.jsx` restaurado.
+## 🟡 v2.6.47 — Relatório: "Vagas ativas" enganosa e "↑ 20814%" (visto no relatório da Fujiarte)
+- [x] Print do usuário: relatório da Fujiarte com 7.738 visualizações
+      e "Vagas ativas: 1", além de "↑ 20814% vs período anterior" e
+      "↑ 0%" na taxa de contato.
+- [x] "Vagas ativas: 1": não era bug de contagem. Vaga do scraper que
+      não reaparece em ~9 dias é ARQUIVADA sozinha (`isJobStale`,
+      `badgeCycles.js`) — exceto de empresa cadastrada (vaga
+      "reivindicada"). Fujiarte não é cadastrada, então as vagas dela
+      que saíram da última importação foram arquivadas; as
+      visualizações vieram de várias vagas, e só 1 continua no ar.
+      Agora, pra empresa não cadastrada, o cartão vira "Vagas
+      divulgadas" = ativa hoje OU com visualização/clique no período.
+      Empresa cadastrada continua com "Vagas ativas".
+- [x] "↑ 20814%": o mês anterior tinha 37 visualizações (rastreio
+      recém-começado), então o percentual não significava crescimento.
+      Comparação com o período anterior agora só aparece com base
+      mínima (50 visualizações, 10 cliques); o "↑ 0%" da taxa de
+      contato (diferença em pontos percentuais arredondada pra 0)
+      também some.
+- Testado reproduzindo o caso (12 vagas arquivadas com 600 views +
+  1 ativa = 7.738; mês anterior 37 views): "Vagas divulgadas 13", nenhuma
+  comparação aparece. Empresa cadastrada (450/45 vs 250/15) continua
+  com as 3 comparações. `npm run build` limpo, `main.jsx` restaurado.
