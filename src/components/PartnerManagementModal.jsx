@@ -10,6 +10,7 @@ import { PARTNER_TYPES, partnerTypeLabel, partnerTypeEmoji } from "../config/par
 import { PLANOS_ORDER } from "../config/plans.js";
 import { resizeImageFile, gerarSlugUnico, CARD_BG_MAX_WIDTH, CARD_BG_MAX_HEIGHT } from "../utils/misc.js";
 import RelatorioDesempenho from "./RelatorioDesempenho.jsx";
+import RelatorioEmpresaAvulsa from "./RelatorioEmpresaAvulsa.jsx";
 
 // Selo controlável + qual campo de cota do plano ele consome — usado
 // só pra montar o resumo "usando X de Y" aqui embaixo. Fonte separada
@@ -159,6 +160,7 @@ export default function PartnerManagementModal({ isOpen, onClose, registeredPart
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
+          <RelatorioEmpresaAvulsa jobs={jobs} registeredPartners={registeredPartners} onGenerate={setRelatorioPartner} />
           {filtered.length === 0 ? (
             <p className="nv-body py-8 text-center text-[13px] text-slate-400">Nenhum parceiro nessa categoria ainda.</p>
           ) : (

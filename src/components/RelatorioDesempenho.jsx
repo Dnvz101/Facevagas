@@ -117,7 +117,9 @@ export default function RelatorioDesempenho({ partner, jobs, onClose }) {
     const fimAnterior = new Date(inicioMes);
     fimAnterior.setDate(fimAnterior.getDate() - 1);
 
-    const vagasDoParceiro = jobs.filter((j) => j.empresa === partner.name);
+    // matchNames: relatório de empresa NÃO cadastrada, juntando as várias
+    // grafias do mesmo nome que aparecem nas vagas ("Fujiarte" / "FUJIARTE Co. Ltd").
+    const vagasDoParceiro = jobs.filter((j) => (partner.matchNames ? partner.matchNames.includes(j.empresa) : j.empresa === partner.name));
     const atual = somaPeriodo(vagasDoParceiro, ymd(inicioMes), ymd(hoje));
     const anterior = somaPeriodo(vagasDoParceiro, ymd(inicioAnterior), ymd(fimAnterior));
 
@@ -200,7 +202,7 @@ export default function RelatorioDesempenho({ partner, jobs, onClose }) {
         <div className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
           <div>
             <h3 className="nv-display text-[15px] font-bold text-slate-900">Relatório de desempenho</h3>
-            <p className="nv-body text-[11px] text-slate-500">Pré-visualização — {partner.name}</p>
+            <p className="nv-body text-[11px] text-slate-500">Pré-visualização — {partner.name}{partner.naoCadastrada ? " (não cadastrada)" : ""}</p>
           </div>
           <button onClick={onClose} className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100">
             <X className="h-4 w-4" />
@@ -226,7 +228,7 @@ export default function RelatorioDesempenho({ partner, jobs, onClose }) {
               <StatCard icon={TrendingUp} label="Taxa de contato" value={`${dados.taxaContato.toFixed(1)}%`} growth={dados.crescTaxa} />
             </div>
 
-            {dados.temAlgumSelo && (
+            {dados.temAlgumSelo && !partner.naoCadastrada && (
               <div className="border-t border-slate-100 px-4 pb-1 pt-3">
                 <p className="nv-display text-[13px] font-bold text-slate-900">O poder de cada selo</p>
                 <SeloRow label="🔥 Vagas com Destaque" comp={dados.selos.destaque} unidade="visualizações" />
@@ -236,7 +238,11 @@ export default function RelatorioDesempenho({ partner, jobs, onClose }) {
             )}
 
             <div className="mt-4 bg-blue-50 px-4 py-3 text-center">
-              <p className="nv-body text-[11px] font-medium text-blue-900">Continue publicando vagas atualizadas para manter seu desempenho.</p>
+              <p className="nv-body text-[11px] font-medium text-blue-900">
+                {partner.naoCadastrada
+                  ? "Vagas divulgadas gratuitamente no NihonVagas.jp. Quer gerenciá-las direto, com contato e métricas próprios? Cadastre sua empresa, sem custo."
+                  : "Continue publicando vagas atualizadas para manter seu desempenho."}
+              </p>
             </div>
             {/* Lembrete puro — sem número novo pra calcular (a pedido:
                 "só um lembrete"), só aparece pra quem já tem a Página
@@ -265,14 +271,16 @@ export default function RelatorioDesempenho({ partner, jobs, onClose }) {
             {gerando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             {gerando ? "Gerando imagem..." : "Baixar imagem"}
           </button>
-          <a
-            href={whatsappLink()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="nv-body flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 py-2.5 text-[13px] font-bold text-emerald-700"
-          >
-            <MessageCircle className="h-4 w-4" /> Abrir WhatsApp de {partner.name.split(" ")[0]}
-          </a>
+          {!partner.naoCadastrada && (
+            <a
+              href={whatsappLink()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="nv-body flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 py-2.5 text-[13px] font-bold text-emerald-700"
+            >
+              <MessageCircle className="h-4 w-4" /> Abrir WhatsApp de {partner.name.split(" ")[0]}
+            </a>
+          )}
           {partner.paginaExclusivaAtiva && partner.paginaExclusivaSlug && (
             <a
               href={paginaExclusivaWhatsappLink()}
@@ -284,7 +292,9 @@ export default function RelatorioDesempenho({ partner, jobs, onClose }) {
             </a>
           )}
           <p className="nv-body text-center text-[10.5px] text-slate-400">
-            O WhatsApp não deixa anexar imagem direto pelo link — baixa primeiro, depois anexa a imagem na conversa que abrir.
+            {partner.naoCadastrada
+              ? "Empresa não cadastrada (sem telefone no sistema) — baixe a imagem e envie pelo canal que você já está usando com eles."
+              : "O WhatsApp não deixa anexar imagem direto pelo link — baixa primeiro, depois anexa a imagem na conversa que abrir."}
           </p>
         </div>
       </div>

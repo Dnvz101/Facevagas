@@ -1609,3 +1609,28 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   (Playwright `page.hover(...)`) — confirmado visualmente que as
   estrelas aparecem voando pra fora, uma azul e uma dourada visíveis
   na captura. `npm run build` limpo depois de restaurar o `main.jsx`.
+## ⚪ v2.6.46 — Relatório de Desempenho também pra empresa NÃO cadastrada
+- [x] Motivo: a Fujiarte (empresa cujas vagas o scraper traz) entrou
+      em contato, e o relatório só podia ser gerado a partir do card
+      de um parceiro cadastrado. Na prática o relatório só precisa do
+      NOME da empresa pra achar as vagas (`job.empresa`) — cadastro
+      nunca foi requisito técnico, só o botão morava no card.
+- [x] Novo `RelatorioEmpresaAvulsa.jsx`: caixa recolhível no topo do
+      Admin → Parceiros & Selos. Busca (sem acento/maiúscula) pelo
+      nome que aparece nas vagas, mostrando só empresas que NÃO são
+      parceiras cadastradas, com contagem de vagas. Como o mesmo nome
+      vem escrito de jeitos diferentes ("Fujiarte" / "Fujiarte Co.
+      Ltd"), tem o botão "Juntar todas as N variações" que soma tudo
+      num relatório só (`partner.matchNames` em `RelatorioDesempenho`).
+- [x] Adaptações no relatório quando `naoCadastrada`: rodapé vira
+      convite ("Vagas divulgadas gratuitamente... Cadastre sua
+      empresa, sem custo") em vez de "Continue publicando..."; bloco
+      "O poder de cada selo" some (upsell fora de lugar pra quem nunca
+      publicou); botões de WhatsApp somem (não há telefone no
+      sistema) e aparece uma dica de baixar a imagem e enviar pelo
+      canal já em uso. Cabeçalho mostra "(não cadastrada)".
+- Testado com 3 vagas em 2 grafias (100+50+30 = 180 views, 10+5+3 =
+  18 cliques → 10.0%), números conferidos à mão; busca por empresa
+  cadastrada não retorna nada; relatório de parceiro cadastrado
+  reconferido (rodapé antigo, WhatsApp presentes). Sem mudança de
+  banco. `npm run build` limpo com `main.jsx` restaurado.
