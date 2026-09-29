@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------
 
 import { useState, useEffect, useMemo } from "react";
-import { Home, Sparkles, CreditCard, Briefcase, Eye, MessageCircle, BadgeCheck, Heart, Zap, Flame, Star, Lock, Printer, TrendingUp, MapPin, Info, CheckCircle2 } from "lucide-react";
+import { Home, Sparkles, CreditCard, Briefcase, Eye, MessageCircle, BadgeCheck, Heart, Zap, Flame, Star, Lock, Printer, TrendingUp, MapPin, Info, CheckCircle2, Mail, Loader2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer, Tooltip } from "recharts";
 import { usePermissions } from "../hooks/usePermissions.js";
 import { computeBadgeStats } from "../utils/stats.js";
@@ -20,9 +20,29 @@ import ClaimJobsModal from "./ClaimJobsModal.jsx";
 import PerformanceReportModal from "./PerformanceReportModal.jsx";
 import PaginaExclusivaShare from "./PaginaExclusivaShare.jsx";
 
-export default function ClientDashboard({ company, jobs, planos, registeredPartners, onPublish, onToggleBadge, onDelete, onClaimJobs, onTogglePreenchida, onTrackWhatsappSupport }) {
+export default function ClientDashboard({ company, jobs, planos, registeredPartners, onPublish, onToggleBadge, onDelete, onClaimJobs, onTogglePreenchida, onTrackWhatsappSupport, onSendVerificationEmail }) {
   const [clientTab, setClientTab] = useState("inicio");
   const [claimModalOpen, setClaimModalOpen] = useState(false);
+  // Portão de e-mail confirmado antes de "Reivindicar Vagas" (item 3 da
+  // defesa v2.6.50) — em vez de abrir o modal de reivindicação direto,
+  // os dois botões passam por aqui primeiro.
+  const [verifyGateOpen, setVerifyGateOpen] = useState(false);
+  const [sendingVerify, setSendingVerify] = useState(false);
+  const [verifySendResult, setVerifySendResult] = useState(null); // { ok: boolean, msg: string } | null
+  const handleClaimClick = () => {
+    if (company.emailVerificado) setClaimModalOpen(true);
+    else setVerifyGateOpen(true);
+  };
+  const handleResendVerification = async () => {
+    setSendingVerify(true);
+    setVerifySendResult(null);
+    const result = await onSendVerificationEmail();
+    setSendingVerify(false);
+    setVerifySendResult({
+      ok: !!result?.success,
+      msg: result?.success ? `Enviamos um link de confirmação pra ${company.email}. Confira sua caixa de entrada (e o spam).` : result?.error || "Não foi possível enviar agora.",
+    });
+  };
   const [claimNotice, setClaimNotice] = useState(null); // toast de sucesso, exibido DEPOIS que o modal já fechou
 
   // Mesmo cuidado do painel principal: rola de volta pro topo ao trocar
@@ -333,7 +353,7 @@ export default function ClientDashboard({ company, jobs, planos, registeredPartn
               <Sparkles className="h-3.5 w-3.5" /> Publicador Mágico (IA)
             </button>
             <button
-              onClick={() => setClaimModalOpen(true)}
+              onClick={handleClaimClick}
               className="nv-body flex flex-1 items-center justify-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-[12px] font-semibold text-blue-600 hover:bg-blue-100"
             >
               📥 Reivindicar Vagas
@@ -533,7 +553,7 @@ export default function ClientDashboard({ company, jobs, planos, registeredPartn
           <div className="flex items-center justify-between gap-3">
             <h2 className="nv-display text-[15px] font-bold text-slate-900">Suas vagas</h2>
             <button
-              onClick={() => setClaimModalOpen(true)}
+              onClick={handleClaimClick}
               className="nv-body flex flex-shrink-0 items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-[11px] font-semibold text-blue-600 hover:bg-blue-100"
             >
               📥 Reivindicar Vagas Importadas
@@ -581,6 +601,44 @@ export default function ClientDashboard({ company, jobs, planos, registeredPartn
         registeredPartners={registeredPartners}
         onConfirm={handleConfirmClaim}
       />
+
+      {/* Portão: pede e-mail confirmado antes de liberar Reivindicar
+          Vagas (item 3 da defesa v2.6.50 — sobe o custo de criar
+          identidade descartável só pra mexer em vaga de terceiro). */}
+      {verifyGateOpen && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/60 p-0 sm:items-center sm:p-4" onClick={() => setVerifyGateOpen(false)}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="nv-rise w-full rounded-t-3xl bg-white p-5 shadow-xl sm:max-w-sm sm:rounded-3xl"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                <Mail className="h-5 w-5" />
+              </div>
+              <h3 className="nv-display text-[15px] font-bold text-slate-900">Confirme seu e-mail primeiro</h3>
+            </div>
+            <p className="nv-body mt-3 text-[12.5px] leading-relaxed text-slate-600">
+              Pra reivindicar vaga de outra empresa, precisamos confirmar que <span className="font-semibold text-slate-800">{company.email}</span> é seu de verdade — evita que alguém crie uma conta qualquer só pra mexer em vaga que não é dela.
+            </p>
+            {verifySendResult && (
+              <p className={`nv-body mt-3 rounded-lg px-3 py-2 text-[12px] font-medium ${verifySendResult.ok ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                {verifySendResult.msg}
+              </p>
+            )}
+            <button
+              onClick={handleResendVerification}
+              disabled={sendingVerify}
+              className="nv-body mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-[13px] font-bold text-white disabled:opacity-60"
+            >
+              {sendingVerify ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+              {sendingVerify ? "Enviando..." : verifySendResult ? "Reenviar e-mail" : "Enviar e-mail de confirmação"}
+            </button>
+            <button onClick={() => setVerifyGateOpen(false)} className="nv-body mt-2 w-full py-2 text-center text-[12px] font-semibold text-slate-400">
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
 
       <PerformanceReportModal
         isOpen={reportOpen}

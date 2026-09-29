@@ -120,18 +120,25 @@ export function resizeImageFile(file, maxWidth = BANNER_MAX_WIDTH, maxHeight = B
 export const CARD_BG_MAX_WIDTH = 1200;
 export const CARD_BG_MAX_HEIGHT = 628;
 
+
+// Minúsculo + sem acento (NFD, remove diacríticos) — pra comparar
+// texto de um jeito que "publicação" bate com "publicacao" digitado
+// sem cedilha/til. Já existia essa mesma conta feita solta em 3
+// lugares (jobFingerprint, gerarSlugUnico, RelatorioEmpresaAvulsa) —
+// juntei aqui, único lugar de verdade, depois do mesmo problema já ter
+// acontecido com telefone (toIntlPhoneDigits, v2.6.42): um desses
+// lugares nunca ter a correção quando alguém mexe só num deles.
+export function normalizeText(s) {
+  return (s || "").toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
 // Gera a URL da Página Exclusiva a partir do nome da empresa —
 // minúsculo, sem acento, espaço vira hífen. Se colidir com o slug de
 // outra empresa (nome igual ou muito parecido), completa com um
 // pedaço do id dela — só nesse caso raro a URL fica menos bonita, mas
 // nunca quebra nem sobrescreve o link de quem já tinha.
 export function gerarSlugUnico(nome, idAtual, parceirosExistentes) {
-  const base = (nome || "")
-    .toString()
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+  const base = normalizeText(nome)
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60) || "empresa";

@@ -17,6 +17,22 @@
 
 import { signSession } from "./_lib/session.js";
 
+// Cópia local (não importa de src/) — funções serverless desse projeto
+// ficam autocontidas de propósito, sem depender do código do navegador.
+const normalizeText = (s) => (s || "").toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+// Item 4 da defesa (v2.6.50): nome de empresa com palavra hostil
+// ("...é crime", "denúncia", "golpe" etc.) é rejeitado direto aqui —
+// pega o ataque preguiçoso/repetido. Lista curta de propósito: só
+// termos que são hostis em QUALQUER contexto de nome de empresa —
+// evita bloquear negócio legítimo (ex.: escritório de advocacia) por
+// coincidência de palavra.
+const PALAVRAS_SUSPEITAS = ["crime", "ilegal", "ilicito", "roubo", "ladrao", "golpe", "fraude", "denuncia"];
+function nomeSuspeito(nome) {
+  const n = normalizeText(nome);
+  return PALAVRAS_SUSPEITAS.some((p) => n.includes(p));
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ success: false, error: "Método não permitido." });
@@ -38,6 +54,25 @@ export default async function handler(req, res) {
     return res.status(400).json({ success: false, error: "Preencha todos os campos obrigatórios." });
   }
 
+  if (nomeSuspeito(name)) {
+    // Não dá detalhe NENHUM do motivo — só "não foi possível". Contar
+    // qual palavra pegou ensinaria a burlar a lista na próxima tentativa.
+    return res.status(200).json({
+      success: false,
+      error: "Não foi possível concluir esse cadastro. Se isso for um engano, entre em contato: nihonvagas@gmail.com",
+    });
+  }
+
+  // Item 5 da defesa (v2.6.50): limita quantos cadastros o MESMO IP
+  // consegue criar num período curto — dificulta ataque tipo o que
+  // gerou a conta falsa "publicação sem autorização é crime" (criada,
+  // reivindicou 334 vagas, tudo em minutos). x-forwarded-for pode vir
+  // com vários IPs (proxy/CDN) — o primeiro da lista é o do visitante.
+  const forwardedFor = req.headers["x-forwarded-for"];
+  const ip = (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor || "")
+    .split(",")[0]
+    .trim() || req.socket?.remoteAddress || null;
+
   const headers = {
     apikey: SERVICE_ROLE_KEY,
     Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
@@ -46,6 +81,25 @@ export default async function handler(req, res) {
   const emailLower = email.trim().toLowerCase();
 
   try {
+    if (ip) {
+      const umaHoraAtras = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const rateRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/parceiros?signup_ip=eq.${encodeURIComponent(ip)}&created_at=gte.${umaHoraAtras}&select=id`,
+        { headers }
+      );
+      if (rateRes.ok) {
+        const recentes = await rateRes.json();
+        if (recentes?.length >= 3) {
+          return res.status(200).json({
+            success: false,
+            error: "Muitos cadastros em pouco tempo. Aguarde um pouco e tente de novo, ou fale com a gente: nihonvagas@gmail.com",
+          });
+        }
+      } else {
+        console.error("partner-signup: falha ao checar limite por IP (segue o cadastro mesmo assim):", rateRes.status);
+      }
+    }
+
     const existsRes = await fetch(
       `${SUPABASE_URL}/rest/v1/parceiros?email=eq.${encodeURIComponent(emailLower)}&select=id`,
       { headers }
@@ -68,6 +122,8 @@ export default async function handler(req, res) {
         phone_jp: (phoneJp || "").trim(),
         plan_key: "gratis", // nunca aceito do navegador — toda empresa nova entra no Grátis
         selo_verificado: false,
+        signup_ip: ip,
+        email_verificado: false,
       }]),
     });
     if (!insertRes.ok) throw new Error(`Supabase (criar parceiro) ${insertRes.status}`);
@@ -121,6 +177,7 @@ export default async function handler(req, res) {
       paginaExclusivaAtiva: false, // empresa nova nunca nasce com a Página Exclusiva — sempre liberada manual pelo Admin
       paginaExclusivaSlug: null,
       fundoCardUrl: null,
+      emailVerificado: false,
     };
 
     // Avisa o celular do Leandro via ntfy.sh (app grátis, sem conta).

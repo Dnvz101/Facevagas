@@ -1684,3 +1684,112 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   sobra de "Visualizações" na interface (exceto "Pré-visualização",
   que é outra coisa). Sem mudança de banco. `npm run build` limpo com
   `main.jsx` restaurado.
+## 🔴 v2.6.49 — Falha de segurança: reivindicar vagas com termo curto sequestrava vaga de empresa nenhuma a ver
+- [x] Usuário reportou (com print): conta nova, nome
+      "publicação sem autorização é crime", **334 vagas** e 61.348
+      exibições associadas — impossível pra conta recém-criada.
+- [x] Causa: `ClaimJobsModal.jsx` só bloqueava termo de busca
+      COMPLETAMENTE vazio (`if (!term) return`) — um termo de 1-2
+      letras bate em quase qualquer `empresa` via `.includes()`, e
+      TODOS os resultados vinham pré-marcados ("tudo selecionado por
+      padrão"). Bastava digitar 1 letra, clicar em confirmar, e
+      centenas de vagas de empresas completamente diferentes trocavam
+      de nome numa tacada só — sem aprovação do Admin, self-service.
+- [x] Corrigido com duas camadas: (1) termo mínimo de 4 caracteres,
+      bloqueado antes de buscar, com aviso na tela; (2) lote grande
+      (>15 resultados) não vem mais pré-marcado — obriga revisão
+      manual antes de confirmar, mesmo com termo válido que ainda
+      bata em muita coisa.
+- [x] **Efeito colateral achado no caminho**: Admin → Todas as Vagas
+      não achava a vaga buscando "publicacao sem autorizacao e crime"
+      sem os acentos — a busca comparava texto cru, sem normalizar.
+      Achei a MESMA lógica de "tira acento" duplicada solta em 3
+      lugares (`jobFingerprint`, `gerarSlugUnico`,
+      `RelatorioEmpresaAvulsa`) — mesmo padrão do bug do telefone
+      (v2.6.42). Extraído `normalizeText()` único em `misc.js`, os 3
+      lugares e a busca do `JobsTable.jsx` (novo) todos usando a
+      mesma função agora.
+- [ ] **Ação manual urgente, fora do meu alcance (sem acesso ao
+      Supabase de vocês)**: as 334 vagas já poluídas continuam com
+      `empresa` errado até alguém limpar. Recomendado: Admin → Todas
+      as Vagas → buscar "publicacao sem autorizacao e crime" (a busca
+      já acha sem acento agora) → selecionar tudo → excluir; depois
+      excluir a conta da empreiteira falsa em Parceiros & Selos. Com
+      os dois removidos, o próximo import do scraper recria essas
+      vagas do zero, com o nome certo de cada empresa (nada mais pra
+      "casar" com a versão poluída).
+- Testado: termo de 1 letra bloqueado com a mensagem certa, sem
+  avançar pra seleção; termo de 4+ letras que ainda bate em 60 vagas
+  (simulado) mostra o aviso de lote grande e nenhum checkbox vem
+  marcado; busca do Admin sem acento nenhum encontrando vaga gravada
+  com acento, sem trazer vaga de outra empresa junto. `npm run build`
+  limpo, `main.jsx` restaurado.
+## 🟣 v2.6.50 — 5 camadas de defesa depois do incidente da conta falsa
+- [x] Motivo: depois da v2.6.49 (corrigiu o buraco em si — termo curto
+      na busca de reivindicar vaga), usuário pediu as 5 ideias de
+      defesa extra que discutimos na conversa.
+- [x] **Item 1 — aviso em tempo real** (`api/notify-claim.js`, novo):
+      dispara ntfy toda vez que uma reivindicação acontece, com
+      destaque maior (`Priority: high`, título com ⚠️) se for lote
+      grande (>15, mesmo limiar que já protege a pré-seleção desde a
+      v2.6.49). Endpoint próprio (não o navegador chamando ntfy.sh
+      direto) — mantém o `NTFY_TOPIC` secreto no servidor, exige
+      sessão válida (`verifySession`) pra ninguém spamar o endpoint.
+      `handleClaimJobs` (`App.jsx`) chama isso depois de confirmar a
+      reivindicação, fire-and-forget.
+- [x] **Item 2 — snapshot + reverter com 1 clique**: `vagas` ganhou a
+      coluna `pre_claim_snapshot` (jsonb). Antes de sobrescrever
+      empresa/telefone/whatsapp/selo numa reivindicação, o estado
+      ANTERIOR de cada vaga é salvo ali. Admin → Todas as Vagas mostra
+      a etiqueta "🔄 Reivindicada" + um botão "↩" que desfaz na hora
+      (`handleRevertClaim`, `App.jsx`) — antes disso, o único jeito de
+      corrigir um caso desses era excluir a vaga inteira e esperar o
+      scraper recriar do zero (foi o que aconteceu com as 334 vagas do
+      incidente).
+- [x] **Item 4 — lista de palavras hostis** (`partner-signup.js`):
+      nome de empresa contendo "crime", "ilegal", "roubo", "golpe",
+      "fraude", "denuncia" etc. (normalizado, sem acento) é rejeitado
+      na hora do cadastro, sem dizer qual palavra pegou (evita
+      ensinar a burlar). Lista curta de propósito — testado que não
+      dá falso-positivo em nome legítimo tipo "Escritório de
+      Advocacia".
+- [x] **Item 5 — limite de cadastro por IP**: `partner-signup.js`
+      agora captura o IP de quem cadastra (`x-forwarded-for`, coluna
+      nova `parceiros.signup_ip`) e bloqueia a partir do 3º cadastro
+      vindo do mesmo IP na última hora — dificulta recriar conta
+      descartável repetidamente pra tentar de novo.
+- [x] **Item 3 — e-mail confirmado antes de reivindicar** (a peça
+      maior): 2 endpoints novos —
+      `api/send-verification-email.js` (gera um token assinado de 24h
+      reaproveitando `signSession`, grava no banco, manda e-mail via
+      Resend — API REST direta, sem SDK novo) e `api/verify-email.js`
+      (confere o token bate com o assinado E com o que está salvo no
+      banco — um token de um "reenviar" anterior já foi substituído e
+      para de valer sozinho). `App.jsx` detecta `?verificar-email=
+      token` na URL (mesmo padrão do `?empresa=` da Página Exclusiva),
+      chama o endpoint, mostra um banner de resultado. Os dois botões
+      "Reivindicar Vagas" da Área do Cliente agora passam por um
+      portão: se `company.emailVerificado` for falso, abre um cartão
+      "Confirme seu e-mail primeiro" com botão de reenvio, em vez do
+      modal de busca de vaga.
+  - ⚠️ **Precisa de configuração nova pra funcionar de verdade**: conta
+    grátis na Resend (resend.com), domínio `nihonvagas.jp` verificado
+    lá (registro DNS), e duas variáveis novas na Vercel —
+    `RESEND_API_KEY` e `RESEND_FROM_EMAIL` (ex.:
+    "NihonVagas <noreply@nihonvagas.jp>"). Sem isso configurado, o
+    endpoint devolve erro claro em vez de fingir que enviou — não
+    quebra o resto do site, só essa função fica indisponível até
+    configurar.
+- Testado: (1) lógica de palavra suspeita — 6 casos incluindo o nome
+  real do incidente, maiúscula+acento, e um falso-positivo evitado
+  ("Advocacia"), todos passaram; (2) reverter reivindicação de ponta a
+  ponta no `JobsTable` — etiqueta aparece, botão reverte, nome volta
+  pro estado salvo, etiqueta some depois; (3) portão de e-mail no
+  `ClientDashboard` — testado os dois lados (verificado abre o modal
+  direto; não verificado mostra o portão, e o botão de reenvio chama o
+  handler certo); (4) assinatura/validação do token de verificação —
+  válido decodifica certo, adulterado é rejeitado, expirado é
+  rejeitado. Sintaxe conferida nos 5 arquivos de servidor novos/
+  tocados. Não testado (não dá, sem credencial real): envio de e-mail
+  de verdade pela Resend, e o limite de cadastro por IP contra um
+  Supabase real. `npm run build` limpo, `main.jsx` restaurado.

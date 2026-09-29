@@ -20,6 +20,7 @@ export function setAdminToken(token) { adminToken = token; }
 export function clearAdminToken() { adminToken = null; }
 export function setPartnerToken(token) { partnerToken = token; }
 export function clearPartnerToken() { partnerToken = null; }
+export function getPartnerToken() { return partnerToken; }
 
 export function getActiveSessionToken() {
   return adminToken || partnerToken;

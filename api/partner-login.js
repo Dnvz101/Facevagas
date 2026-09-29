@@ -45,7 +45,7 @@ export default async function handler(req, res) {
 
   try {
     const emailLower = email.trim().toLowerCase();
-    const url = `${SUPABASE_URL}/rest/v1/parceiros?email=eq.${encodeURIComponent(emailLower)}&select=id,tipo,name,email,password,phone_pt,phone_jp,plan_key,selo_verificado,pagina_exclusiva_ativa,pagina_exclusiva_slug,fundo_card_url`;
+    const url = `${SUPABASE_URL}/rest/v1/parceiros?email=eq.${encodeURIComponent(emailLower)}&select=id,tipo,name,email,password,phone_pt,phone_jp,plan_key,selo_verificado,pagina_exclusiva_ativa,pagina_exclusiva_slug,fundo_card_url,email_verificado`;
     const dbRes = await fetch(url, {
       headers: {
         apikey: SERVICE_ROLE_KEY,
@@ -75,6 +75,7 @@ export default async function handler(req, res) {
       paginaExclusivaAtiva: !!row.pagina_exclusiva_ativa,
       paginaExclusivaSlug: row.pagina_exclusiva_slug || null,
       fundoCardUrl: row.fundo_card_url || null,
+      emailVerificado: !!row.email_verificado,
     };
     return res.status(200).json({ success: true, token, partner });
   } catch (err) {

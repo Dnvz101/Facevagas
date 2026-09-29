@@ -5,13 +5,14 @@
 // ---------------------------------------------------------------
 
 import { useState } from "react";
-import { AlertCircle, Trash2 } from "lucide-react";
+import { AlertCircle, Trash2, Undo2 } from "lucide-react";
 import { VerificadoBadge } from "./Badges.jsx";
 import { BADGE_DEFS, ADMIN_ONLY_BADGE_DEFS } from "../config/badgeDefs.js";
+import { normalizeText } from "../utils/misc.js";
 import { QUOTA_BADGE_MAP } from "../hooks/usePermissions.js";
 import { destaqueDiasRestantes, novoHorasRestantes, STALE_THRESHOLD_MS } from "../utils/badgeCycles.js";
 
-export default function JobsTable({ jobs, onToggleBadge, onDelete, onDeleteMany, canUseBadge, canToggleVerificado = true, quotaSummary = null, showNovoBadge = false, onTogglePreenchida, onToggleArquivada }) {
+export default function JobsTable({ jobs, onToggleBadge, onDelete, onDeleteMany, canUseBadge, canToggleVerificado = true, quotaSummary = null, showNovoBadge = false, onTogglePreenchida, onToggleArquivada, onRevertClaim }) {
   // Aviso visível (não é só um tooltip) quando alguém tenta ativar um
   // selo sem cota disponível — some sozinho depois de alguns segundos.
   const [quotaWarning, setQuotaWarning] = useState(null);
@@ -44,9 +45,9 @@ export default function JobsTable({ jobs, onToggleBadge, onDelete, onDeleteMany,
   // Busca por texto + filtro de status + filtro de província — os três
   // se combinam (uma vaga só aparece se bater em todos os que
   // estiverem ativos).
-  const term = searchTerm.trim().toLowerCase();
+  const term = normalizeText(searchTerm);
   const visibleJobs = jobs.filter((j) => {
-    if (term && !`${j.cargo} ${j.empresa} ${j.provincia}`.toLowerCase().includes(term)) return false;
+    if (term && !normalizeText(`${j.cargo} ${j.empresa} ${j.provincia}`).includes(term)) return false;
     if (statusFiltro === "ativas" && (j.preenchida || j.arquivada)) return false;
     if (statusFiltro === "preenchidas" && !j.preenchida) return false;
     if (statusFiltro === "arquivadas" && !j.arquivada) return false;
@@ -202,6 +203,9 @@ export default function JobsTable({ jobs, onToggleBadge, onDelete, onDeleteMany,
                   </p>
                   <p className="nv-body flex items-center gap-1 text-[11px] text-slate-400">
                     {j.empresa} {j.seloVerificado && <VerificadoBadge />}
+                    {onRevertClaim && j.preClaimSnapshot && (
+                      <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[9px] font-bold text-indigo-600">🔄 Reivindicada</span>
+                    )}
                   </p>
                   {isIncompleta(j) && (
                     <p className="nv-body mt-0.5 flex flex-wrap items-center gap-1">
@@ -303,6 +307,18 @@ export default function JobsTable({ jobs, onToggleBadge, onDelete, onDeleteMany,
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1">
+                    {/* Só aparece se essa vaga foi reivindicada e tem estado
+                        anterior salvo — Admin-only (onRevertClaim vem null
+                        na Área do Cliente, onde esse botão nem faz sentido). */}
+                    {onRevertClaim && j.preClaimSnapshot && (
+                      <button
+                        onClick={() => onRevertClaim(j.id)}
+                        title={`Desfazer reivindicação — volta pra "${j.preClaimSnapshot.empresa || "(sem empresa)"}"`}
+                        className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-indigo-500 hover:bg-indigo-50"
+                      >
+                        <Undo2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                     <button onClick={() => onDelete(j.id)} className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-rose-500 hover:bg-rose-50">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>

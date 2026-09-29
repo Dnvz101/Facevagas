@@ -14,8 +14,7 @@
 import { useMemo, useState } from "react";
 import { Search, BarChart3, ChevronDown } from "lucide-react";
 
-const norm = (s) =>
-  (s || "").toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+import { normalizeText as norm } from "../utils/misc.js";
 
 export default function RelatorioEmpresaAvulsa({ jobs, registeredPartners, onGenerate }) {
   const [open, setOpen] = useState(false);

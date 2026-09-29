@@ -6,6 +6,7 @@
 // ---------------------------------------------------------------
 
 import { formatYen } from "./format.js";
+import { normalizeText } from "./misc.js";
 
 // Três faixas: valor baixo = por hora, médio = diária, alto = mensal.
 // Sem essa terceira faixa, um salário mensal de escritório (tipo
@@ -404,6 +405,5 @@ export function mapScrapedJob(item) {
 // parecidas podem colidir por coincidência), mas é bem melhor que nada
 // — e só entra em ação quando a URL (o método confiável) não existe.
 export function jobFingerprint(job) {
-  const norm = (s) => (s || "").toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  return [norm(job.empresa), norm(job.cargo), norm(job.cidade), Math.round(Number(job.salarioHora) || 0)].join("|");
+  return [normalizeText(job.empresa), normalizeText(job.cargo), normalizeText(job.cidade), Math.round(Number(job.salarioHora) || 0)].join("|");
 }

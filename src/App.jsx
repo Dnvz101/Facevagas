@@ -65,7 +65,7 @@ import {
   fetchSiteConfigFromDB, upsertSiteConfigInDB,
   incrementJobStatInDB,
 } from "./lib/supabase.js";
-import { setAdminToken, clearAdminToken, setPartnerToken, clearPartnerToken } from "./lib/session.js";
+import { setAdminToken, clearAdminToken, setPartnerToken, clearPartnerToken, getPartnerToken } from "./lib/session.js";
 import { personalStorageGet, personalStorageSet } from "./lib/personalStorage.js";
 
 import { uid, simplifyNihongo, normalizeProvincia, isIndicacaoQualificavel, isIndicacaoVisivel } from "./utils/jobParsing.js";
@@ -105,6 +105,59 @@ export default function App() {
     params.delete("empresa");
     const query = params.toString();
     window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+  };
+
+  // Link de verificação de e-mail (?verificar-email=token) — mesma
+  // ideia do "empresa" acima: lido uma vez, e o próprio efeito abaixo
+  // já chama o endpoint e limpa a URL (nunca fica reprocessando o
+  // mesmo token de novo se a pessoa der F5 depois).
+  const [emailVerifyBanner, setEmailVerifyBanner] = useState(null); // { ok: boolean, msg: string } | null
+  useEffect(() => {
+    const verifyToken = new URLSearchParams(window.location.search).get("verificar-email");
+    if (!verifyToken) return;
+    const params = new URLSearchParams(window.location.search);
+    params.delete("verificar-email");
+    const query = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+
+    fetch("/api/verify-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ verifyToken }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setEmailVerifyBanner({
+          ok: !!data.success,
+          msg: data.success ? "E-mail verificado! Já dá pra reivindicar vagas." : data.error || "Não foi possível confirmar o e-mail.",
+        });
+        if (data.success && data.partnerId) {
+          setRegisteredPartners((prev) => prev.map((p) => (p.id === data.partnerId ? { ...p, emailVerificado: true } : p)));
+        }
+      })
+      .catch((err) => {
+        console.error("Falha ao verificar e-mail:", err);
+        setEmailVerifyBanner({ ok: false, msg: "Não foi possível confirmar o e-mail agora. Tente de novo." });
+      });
+  }, []);
+
+  // "Reenviar e-mail de verificação" — chamado da Área do Cliente.
+  // Retorna { success, error } pro componente decidir o que mostrar
+  // (loading, sucesso, erro) sem precisar de mais estado aqui em cima.
+  const handleSendVerificationEmail = async () => {
+    const partnerToken = getPartnerToken();
+    if (!partnerToken) return { success: false, error: "Sessão expirada — faça login de novo." };
+    try {
+      const res = await fetch("/api/send-verification-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: partnerToken }),
+      });
+      return await res.json();
+    } catch (err) {
+      console.error("Falha ao pedir e-mail de verificação:", err);
+      return { success: false, error: "Não foi possível enviar agora. Tente de novo em instantes." };
+    }
   };
 
   // Mantém a URL sincronizada sempre que a aba muda (troca por clique
@@ -1183,10 +1236,30 @@ export default function App() {
     const partner = registeredPartners.find((p) => p.name === officialName);
     const jaVerificada = !!(partner?.seloVerificado || planos[partner?.planKey]?.seloVerificado);
 
+    // Guarda o estado ANTES de sobrescrever (empresa/telefone/whatsapp/
+    // selo de cada vaga) — sem isso, desfazer uma reivindicação
+    // suspeita só dava pra fazer excluindo a vaga inteira e esperando o
+    // scraper recriar do zero (foi o que aconteceu no incidente da
+    // conta falsa "publicação sem autorização é crime", v2.6.49). Com o
+    // snapshot, vira reverter com 1 clique (ver handleRevertClaim).
+    const snapshotById = new Map(
+      jobs.filter((j) => jobIds.includes(j.id)).map((j) => [
+        j.id,
+        { empresa: j.empresa, telefone: j.telefone, whatsapp: j.whatsapp, seloVerificado: j.seloVerificado },
+      ])
+    );
+
     setJobs((prev) =>
       prev.map((j) =>
         jobIds.includes(j.id)
-          ? { ...j, empresa: officialName, telefone: contactPhone, whatsapp: contactPhone, seloVerificado: jaVerificada || j.seloVerificado }
+          ? {
+              ...j,
+              empresa: officialName,
+              telefone: contactPhone,
+              whatsapp: contactPhone,
+              seloVerificado: jaVerificada || j.seloVerificado,
+              preClaimSnapshot: snapshotById.get(j.id) || j.preClaimSnapshot,
+            }
           : j
       )
     );
@@ -1198,9 +1271,44 @@ export default function App() {
       // erro pro modal, que já fechou achando (corretamente) que deu certo.
       Promise.all(
         jobIds.map((id) =>
-          updateJobInDB(id, { empresa: officialName, telefone: contactPhone, whatsapp: contactPhone, seloVerificado: jaVerificada })
+          updateJobInDB(id, {
+            empresa: officialName,
+            telefone: contactPhone,
+            whatsapp: contactPhone,
+            seloVerificado: jaVerificada,
+            preClaimSnapshot: snapshotById.get(id) || null,
+          })
         )
       ).catch((err) => console.error("Falha ao persistir reivindicação de vagas:", err));
+    }
+
+    // Avisa o Admin em tempo real (fire-and-forget — nunca deve travar
+    // nem falhar a reivindicação em si por causa disso).
+    const partnerToken = getPartnerToken();
+    if (partnerToken) {
+      fetch("/api/notify-claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: partnerToken, companyName: officialName, count: jobIds.length }),
+      }).catch((err) => console.error("Falha ao notificar reivindicação:", err));
+    }
+  };
+
+  // Desfaz uma reivindicação (Admin) — devolve a vaga pro estado salvo
+  // em preClaimSnapshot (empresa/telefone/whatsapp/selo de antes) e
+  // limpa o snapshot, já que não tem mais nada pra reverter depois disso.
+  const handleRevertClaim = (jobId) => {
+    const job = jobs.find((j) => j.id === jobId);
+    if (!job?.preClaimSnapshot) return;
+    const snap = job.preClaimSnapshot;
+    const ok = window.confirm(
+      `Reverter "${job.cargo}" de volta pra empresa "${snap.empresa || "(sem empresa)"}", desfazendo a reivindicação atual (${job.empresa})?`
+    );
+    if (!ok) return;
+    const patch = { empresa: snap.empresa, telefone: snap.telefone, whatsapp: snap.whatsapp, seloVerificado: snap.seloVerificado, preClaimSnapshot: null };
+    setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, ...patch } : j)));
+    if (dbStatus === "connected") {
+      updateJobInDB(jobId, patch).catch((err) => console.error("Falha ao reverter reivindicação:", err));
     }
   };
 
@@ -1440,6 +1548,15 @@ export default function App() {
 
   return (
     <div className={`nv-body min-h-screen bg-slate-50 pb-16 ${darkMode ? "nv-dark-invert" : ""}`}>
+      {/* Banner do resultado de verificação de e-mail (?verificar-email=token) —
+          fixo no topo, some sozinho quando a pessoa fecha; não trava nada por
+          baixo. */}
+      {emailVerifyBanner && (
+        <div className={`sticky top-0 z-30 px-5 py-2.5 text-center text-[12.5px] font-semibold text-white ${emailVerifyBanner.ok ? "bg-emerald-600" : "bg-rose-600"}`}>
+          <span className="nv-body">{emailVerifyBanner.msg}</span>
+          <button onClick={() => setEmailVerifyBanner(null)} className="ml-3 underline opacity-90">Fechar</button>
+        </div>
+      )}
       {/* Header */}
       <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-4">
@@ -1764,7 +1881,7 @@ export default function App() {
                     vaga só é decidido em "Parceiros & Selos" (nível da
                     empresa); deixar editável nas duas telas ao mesmo
                     tempo fazia uma sobrescrever a outra sem avisar. */}
-                <JobsTable jobs={jobs} onToggleBadge={handleToggleBadge} onDelete={handleDelete} onDeleteMany={handleDeleteMany} canUseBadge={() => true} canToggleVerificado={false} showNovoBadge onTogglePreenchida={handleTogglePreenchida} onToggleArquivada={handleToggleArquivada} />
+                <JobsTable jobs={jobs} onToggleBadge={handleToggleBadge} onDelete={handleDelete} onDeleteMany={handleDeleteMany} canUseBadge={() => true} canToggleVerificado={false} showNovoBadge onTogglePreenchida={handleTogglePreenchida} onToggleArquivada={handleToggleArquivada} onRevertClaim={handleRevertClaim} />
               </div>
             )}
 
@@ -1830,6 +1947,7 @@ export default function App() {
             onClaimJobs={handleClaimJobs}
             onTogglePreenchida={handleTogglePreenchida}
             onTrackWhatsappSupport={() => bumpSiteStat("whatsappSupportClicks")}
+            onSendVerificationEmail={handleSendVerificationEmail}
           />
         )}
       </main>

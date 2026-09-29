@@ -603,3 +603,17 @@ create policy "site_config_public_read" on public.site_config for select using (
 alter table public.parceiros add column if not exists pagina_exclusiva_ativa boolean not null default false;
 alter table public.parceiros add column if not exists pagina_exclusiva_slug text unique;
 alter table public.parceiros add column if not exists fundo_card_url text;
+
+-- =============================================================
+-- v27 — Defesas contra o incidente da "conta falsa reivindicando
+-- centenas de vagas" (v2.6.49 corrigiu a falha em si; isso aqui é
+-- camada extra: (1) snapshot pra poder desfazer reivindicação sem
+-- precisar apagar e esperar o scraper recriar, (2) rastro de IP pra
+-- limitar cadastro em massa, (3) e-mail confirmado antes de poder
+-- reivindicar vaga de terceiro.
+-- =============================================================
+alter table public.vagas add column if not exists pre_claim_snapshot jsonb;
+alter table public.parceiros add column if not exists signup_ip text;
+alter table public.parceiros add column if not exists email_verificado boolean not null default false;
+alter table public.parceiros add column if not exists email_verify_token text;
+alter table public.parceiros add column if not exists email_verify_token_exp timestamptz;

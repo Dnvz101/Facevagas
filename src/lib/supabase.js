@@ -99,6 +99,7 @@ export function rowToJob(row) {
     idadeMaxima: row.idade_maxima ?? null,
     indicacao: !!row.indicacao, // origem: cadastrada manualmente via aba Indicações (55+)
     indicacoesAtiva: !!row.indicacoes_ativa, // vaga TRADICIONAL ativada manualmente pro cross-post (indicação manual não depende disso)
+    preClaimSnapshot: row.pre_claim_snapshot || null,
   };
   for (const [jsKey, dbKey] of Object.entries(BADGE_DB_FIELDS)) job[jsKey] = !!row[dbKey];
   return job;
@@ -178,6 +179,7 @@ export const supabaseAdapter = {
   async updateJob(id, patch) {
     const dbPatch = {};
     if ("clicks" in patch) dbPatch.clicks = patch.clicks;
+    if ("preClaimSnapshot" in patch) dbPatch.pre_claim_snapshot = patch.preClaimSnapshot;
     if ("views" in patch) dbPatch.views = patch.views;
     if ("favoritos" in patch) dbPatch.favoritos = patch.favoritos;
     if ("seloVerificado" in patch) dbPatch.selo_verificado = patch.seloVerificado;
@@ -413,7 +415,7 @@ export const supabaseAdapter = {
   // (api/partner-login.js), nunca mais comparado aqui no navegador.
   async fetchPartners() {
     const rows = await supabaseRequest(
-      "parceiros?select=id,tipo,name,email,phone_pt,phone_jp,plan_key,selo_verificado,pagina_exclusiva_ativa,pagina_exclusiva_slug,fundo_card_url"
+      "parceiros?select=id,tipo,name,email,phone_pt,phone_jp,plan_key,selo_verificado,pagina_exclusiva_ativa,pagina_exclusiva_slug,fundo_card_url,email_verificado"
     );
     if (!rows?.length) return null;
     return rows.map((r) => ({
@@ -428,6 +430,7 @@ export const supabaseAdapter = {
       paginaExclusivaAtiva: !!r.pagina_exclusiva_ativa,
       paginaExclusivaSlug: r.pagina_exclusiva_slug || null,
       fundoCardUrl: r.fundo_card_url || null,
+      emailVerificado: !!r.email_verificado,
     }));
   },
   // NUNCA usa "upsert" aqui — o navegador nunca tem a senha de
@@ -459,6 +462,7 @@ export const supabaseAdapter = {
             pagina_exclusiva_ativa: p.paginaExclusivaAtiva,
             pagina_exclusiva_slug: p.paginaExclusivaSlug,
             fundo_card_url: p.fundoCardUrl,
+            email_verificado: p.emailVerificado,
           },
           match: { id: p.id },
         })

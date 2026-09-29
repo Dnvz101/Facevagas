@@ -14,6 +14,7 @@ export default function ClaimJobsModal({ isOpen, onClose, jobs, companyName, com
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [claiming, setClaiming] = useState(false);
   const [claimError, setClaimError] = useState(null);
+  const [searchTooShort, setSearchTooShort] = useState(false);
 
   // Já sabemos o nome oficial — pré-preenche a busca com ele.
   useEffect(() => {
@@ -26,6 +27,7 @@ export default function ClaimJobsModal({ isOpen, onClose, jobs, companyName, com
     setSelectedIds(new Set());
     setClaiming(false);
     setClaimError(null);
+    setSearchTooShort(false);
   };
 
   const handleClose = () => {
@@ -36,6 +38,16 @@ export default function ClaimJobsModal({ isOpen, onClose, jobs, companyName, com
   const handleSearch = () => {
     const term = searchTerm.trim();
     if (!term) return;
+    // Termo curto demais (ex.: "a", "de") bate em quase QUALQUER nome de
+    // empresa via .includes() — isso permitia "reivindicar" centenas de
+    // vagas de empresas completamente diferentes de uma vez (achado num
+    // caso real: conta nova, termo curto, "selecionar todas", confirmar —
+    // 334 vagas de outras empresas trocaram de nome numa tacada só).
+    if (term.length < 4) {
+      setSearchTooShort(true);
+      return;
+    }
+    setSearchTooShort(false);
     // Blindagem anti-sequestro: nomes de empresas que JÁ têm conta
     // registrada (exceto a própria empresa que está buscando) nunca
     // aparecem pra reivindicar — evita uma empresa "roubar" vagas que já
@@ -51,7 +63,10 @@ export default function ClaimJobsModal({ isOpen, onClose, jobs, companyName, com
       return true;
     });
     setMatchedJobs(found);
-    setSelectedIds(new Set(found.map((j) => j.id))); // tudo marcado por padrão
+    // Lote grande (>15) não vem mais pré-marcado — obriga a pessoa a
+    // revisar e escolher, em vez de um "Marcar todas" + confirmar
+    // acidental (ou malicioso) pegando vaga de empresa nenhuma a ver.
+    setSelectedIds(found.length > 15 ? new Set() : new Set(found.map((j) => j.id)));
     setStep("selecao");
   };
 
@@ -133,6 +148,11 @@ export default function ClaimJobsModal({ isOpen, onClose, jobs, companyName, com
               >
                 <Sparkles className="h-4 w-4" /> Buscar Vagas
               </button>
+              {searchTooShort && (
+                <p className="nv-body text-[12px] font-medium text-rose-600">
+                  Digite pelo menos 4 letras — um termo muito curto bate em vaga de empresas completamente diferentes.
+                </p>
+              )}
             </div>
           )}
 
@@ -153,6 +173,11 @@ export default function ClaimJobsModal({ isOpen, onClose, jobs, companyName, com
                     Encontramos <span className="font-bold text-slate-900">{matchedJobs.length}</span> vaga(s) associada(s) a "
                     <span className="font-bold text-slate-900">{searchTerm}</span>". Selecione as que pertencem à sua empresa para assumi-las:
                   </p>
+                  {matchedJobs.length > 15 && (
+                    <p className="nv-body rounded-lg bg-amber-50 px-3 py-2 text-[11.5px] font-medium text-amber-700">
+                      ⚠️ Muito resultado pra um termo só — confira com cuidado antes de marcar. Nenhuma veio pré-selecionada de propósito.
+                    </p>
+                  )}
 
                   <button onClick={toggleSelectAll} className="nv-body flex items-center gap-1.5 text-[12px] font-semibold text-blue-600">
                     <CheckSquare className="h-3.5 w-3.5" />
