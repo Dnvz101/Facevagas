@@ -21,6 +21,17 @@ import { signSession } from "./_lib/session.js";
 // ficam autocontidas de propósito, sem depender do código do navegador.
 const normalizeText = (s) => (s || "").toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
+// Defesa: Lista negra de IPs e faixas confirmadas de ataque/abuso
+const IPS_BLOQUEADOS = [
+  "179.65.141.9", // Starlink JP - Usuário que reivindicou 334 vagas indevidamente
+];
+const PREFIXOS_BLOQUEADOS = [
+  "179.65.141.",  // Bloqueia a sub-rede completa usada na ação de protesto
+];
+
+// Domínios de e-mail fictícios ou de teste bloqueados
+const DOMINIOS_EMAIL_BLOQUEADOS = ["aaa.com", "teste.com", "fake.com"];
+
 // Item 4 da defesa (v2.6.50): nome de empresa com palavra hostil
 // ("...é crime", "denúncia", "golpe" etc.) é rejeitado direto aqui —
 // pega o ataque preguiçoso/repetido. Lista curta de propósito: só
@@ -45,6 +56,28 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: "Servidor mal configurado." });
   }
 
+  // Captura robusta de IP com fallback para cabeçalhos de Vercel e Cloudflare
+  const forwardedFor = req.headers["x-forwarded-for"];
+  const ip = (
+    (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor || "").split(",")[0].trim() ||
+    req.headers["x-real-ip"] ||
+    req.headers["cf-connecting-ip"] ||
+    req.socket?.remoteAddress ||
+    null
+  );
+
+  // Verificação imediata de bloqueio por IP
+  if (ip) {
+    const ipBanido = IPS_BLOQUEADOS.includes(ip) || PREFIXOS_BLOQUEADOS.some((p) => ip.startsWith(p));
+    if (ipBanido) {
+      console.warn(`[DEFESA NIHONVAGAS] Bloqueada tentativa de cadastro vinda do IP: ${ip}`);
+      return res.status(200).json({
+        success: false,
+        error: "Não foi possível concluir esse cadastro. Se isso for um engano, entre em contato: nihonvagas@gmail.com",
+      });
+    }
+  }
+
   const {
     tipo, name, email, password, phonePt, phoneJp,
     listingCategoria, listingDescricao, isNewListingCategory, newCategoryColor,
@@ -52,6 +85,15 @@ export default async function handler(req, res) {
 
   if (!tipo || !name?.trim() || !email?.trim() || !password?.trim() || !phonePt?.trim()) {
     return res.status(400).json({ success: false, error: "Preencha todos os campos obrigatórios." });
+  }
+
+  const emailLower = email.trim().toLowerCase();
+  const domainPart = emailLower.split("@")[1];
+  if (DOMINIOS_EMAIL_BLOQUEADOS.includes(domainPart)) {
+    return res.status(200).json({
+      success: false,
+      error: "Por favor, utilize um endereço de e-mail corporativo ou pessoal válido.",
+    });
   }
 
   if (nomeSuspeito(name)) {
@@ -63,24 +105,14 @@ export default async function handler(req, res) {
     });
   }
 
-  // Item 5 da defesa (v2.6.50): limita quantos cadastros o MESMO IP
-  // consegue criar num período curto — dificulta ataque tipo o que
-  // gerou a conta falsa "publicação sem autorização é crime" (criada,
-  // reivindicou 334 vagas, tudo em minutos). x-forwarded-for pode vir
-  // com vários IPs (proxy/CDN) — o primeiro da lista é o do visitante.
-  const forwardedFor = req.headers["x-forwarded-for"];
-  const ip = (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor || "")
-    .split(",")[0]
-    .trim() || req.socket?.remoteAddress || null;
-
   const headers = {
     apikey: SERVICE_ROLE_KEY,
     Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
     "Content-Type": "application/json",
   };
-  const emailLower = email.trim().toLowerCase();
 
   try {
+    // Limite de taxa (Rate Limit) por IP
     if (ip) {
       const umaHoraAtras = new Date(Date.now() - 60 * 60 * 1000).toISOString();
       const rateRes = await fetch(
@@ -180,15 +212,7 @@ export default async function handler(req, res) {
       emailVerificado: false,
     };
 
-    // Avisa o celular do Leandro via ntfy.sh (app grátis, sem conta).
-    // Precisa de AWAIT aqui: numa Serverless Function da Vercel, o
-    // processo pode ser congelado logo depois que a resposta é
-    // enviada — um fetch "dispara e esquece" (sem await) corria o
-    // risco de nunca terminar de sair, mesmo a função respondendo
-    // 200 com sucesso (foi exatamente o que aconteceu: log mostrava
-    // sucesso, mas a notificação nunca chegava). O timeout de 4s e o
-    // try/catch garantem que, mesmo assim, o cadastro da empresa
-    // nunca fica mais lento nem falha por causa do ntfy.
+    // Notificação ntfy
     if (process.env.NTFY_TOPIC) {
       try {
         const ctrl = new AbortController();
