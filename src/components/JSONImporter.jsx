@@ -14,13 +14,15 @@ import { Upload, Loader2, CheckCircle2, AlertCircle, AlertTriangle, Send } from 
 import { mapScrapedJob, jobFingerprint, uid } from "../utils/jobParsing.js";
 import { formatYen } from "../utils/format.js";
 import { insertJobsBulkToDB, updateJobInDB } from "../lib/supabase.js";
+import { matchBlockedCompany } from "../utils/misc.js";
 
-export default function JSONImporter({ dbStatus, jobs, registeredPartners = [], onImported }) {
+export default function JSONImporter({ dbStatus, jobs, registeredPartners = [], blockedCompanies = [], onImported }) {
   const [parsing, setParsing] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [preview, setPreview] = useState(null); // array de itens de revisão, ou null (mostra o dropzone)
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [blockedInfo, setBlockedInfo] = useState(null); // [{ name, count }] das vagas ignoradas por empresa bloqueada, ou null
   const fileRef = useRef(null);
 
   const handleFile = async (file) => {
@@ -28,6 +30,7 @@ export default function JSONImporter({ dbStatus, jobs, registeredPartners = [], 
     setParsing(true);
     setError(null);
     setResult(null);
+    setBlockedInfo(null);
     try {
       const text = await file.text();
       let raw;
@@ -39,7 +42,18 @@ export default function JSONImporter({ dbStatus, jobs, registeredPartners = [], 
       if (!Array.isArray(raw)) throw new Error("O arquivo precisa conter um array de vagas ( [ {...}, {...} ] ).");
       if (raw.length === 0) throw new Error("O arquivo está vazio.");
 
-      const mapped = raw.map(mapScrapedJob);
+      // Filtro de empresas bloqueadas: essas vagas nem entram na lista de
+      // revisão (e por isso também não "atualizam"/desarquivam nada que já
+      // exista no banco). Só o resumo do que foi ignorado aparece na tela.
+      const blockedCount = new Map();
+      const mapped = raw.map(mapScrapedJob).filter((nj) => {
+        const hit = matchBlockedCompany(nj.empresa, blockedCompanies);
+        if (!hit) return true;
+        blockedCount.set(hit, (blockedCount.get(hit) || 0) + 1);
+        return false;
+      });
+      setBlockedInfo(blockedCount.size ? [...blockedCount.entries()].map(([name, count]) => ({ name, count })) : null);
+      if (mapped.length === 0) return; // tudo era de empresa bloqueada — nada pra revisar (o finally já destrava o botão)
 
       // Deduplicação: compara cada vaga nova contra as que já vieram do
       // scraper antes (têm lastSeenAt — nunca compara contra vaga
@@ -100,6 +114,7 @@ export default function JSONImporter({ dbStatus, jobs, registeredPartners = [], 
   const cancelar = () => {
     setPreview(null);
     setError(null);
+    setBlockedInfo(null);
   };
 
   const publicar = async () => {
@@ -161,6 +176,16 @@ export default function JSONImporter({ dbStatus, jobs, registeredPartners = [], 
       <p className="nv-body mb-4 text-[12px] text-slate-500">
         Envie o arquivo .json gerado pelo scraper desktop — antes de publicar, você confere a lista e escolhe quais entram.
       </p>
+
+      {blockedInfo && (
+        <p className="nv-body mb-3 flex items-start gap-1.5 rounded-lg bg-rose-50 px-3 py-2 text-[11.5px] font-medium text-rose-700">
+          <span>🚫</span>
+          <span>
+            Ignoradas por empresa bloqueada: {blockedInfo.map((b) => `${b.name} (${b.count})`).join(", ")}
+            {!preview && " — nada sobrou pra revisar nesse arquivo."}
+          </span>
+        </p>
+      )}
 
       {!preview && (
         <div

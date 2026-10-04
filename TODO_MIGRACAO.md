@@ -1859,3 +1859,42 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   passa do portão e a requisição chega de verdade na API da Anthropic
   (confirmado pelo formato do erro deles, diferente do meu, usando
   uma chave de teste inválida de propósito). `npm run build` limpo.
+
+## ⚪ v2.6.52 — Empresas bloqueadas na importação de JSON (caso Fujiarte)
+- [x] Motivo: vagas da Fujiarte continuavam subindo a cada JSON do
+      scraper (Empregos.jp é deles), e reimportar ainda DESARQUIVA
+      vaga já arquivada (a atualização manda `arquivada: false`).
+- [x] Lista de bloqueio guardada em `site_config.blocked_companies`
+      (jsonb, schema v29 — mesmo singleton do "dias até arquivar",
+      escrita só via gateway/Admin). Leitura/gravação em
+      `supabase.js` (`fetchSiteConfig`/`upsertSiteConfig`).
+- [x] `matchBlockedCompany` (`misc.js`): compara `empresa` sem
+      acento/maiúscula e por PEDAÇO do nome ("fujiarte" pega "Fujiarte
+      Co. Ltd" e "FUJIARTE"). Termo com < 3 letras é ignorado de
+      propósito (evita bloquear empresa errada por acidente).
+- [x] `JSONImporter`: vaga de empresa bloqueada é filtrada ANTES de
+      montar a lista de revisão — não aparece, não atualiza, não
+      desarquiva nada que já esteja no banco. Aviso vermelho no topo
+      mostra quanto foi ignorado por empresa ("fujiarte (12)"); se o
+      arquivo inteiro era de empresa bloqueada, mostra "nada sobrou
+      pra revisar" em vez de uma lista vazia.
+- [x] `BlockedCompaniesManager` (novo) logo abaixo do importador no
+      Admin → Vagas: adicionar (mín. 3 letras, sem duplicata) e remover
+      com um clique. Remover do bloqueio só libera as PRÓXIMAS
+      importações; não mexe no que já está no banco.
+- Limites conhecidos: filtra pelo campo `empresa` do JSON — se o
+  scraper preencher a empresa errada numa vaga (já vimos
+  empresa/cargo trocados em alguns posts de Facebook), ela não será
+  pega; e isso só vale pra importação por JSON (o scraper em si, no
+  computador, continua coletando — o filtro está do lado do site).
+  Vagas da Fujiarte JÁ existentes no banco não são apagadas por isso
+  (ficam como estão; se já foram arquivadas, continuam).
+- ⚠️ Rodar o SQL v29 ANTES de subir: sem a coluna, salvar
+  qualquer ajuste de `site_config` (inclusive "dias até arquivar")
+  falha, porque a gravação agora manda `blocked_companies` junto.
+- Testado: matcher (7 casos: variações de caixa/acento, termo curto
+  ignorado, lista vazia/undefined); no navegador, JSON misto (4
+  vagas, 2 da Fujiarte em grafias diferentes → só 2 na lista, só as 2
+  certas publicadas), JSON 100% bloqueado, e o gerenciador (recusa
+  termo curto e duplicata com outra caixa, adiciona, remove).
+  `npm run build` limpo, `main.jsx` restaurado.

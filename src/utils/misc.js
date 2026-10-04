@@ -149,3 +149,17 @@ export function gerarSlugUnico(nome, idAtual, parceirosExistentes) {
   if (!emUsoPorOutraEmpresa(base)) return base;
   return `${base}-${(idAtual || "").toString().slice(0, 4)}`;
 }
+
+// Empresa bloqueada? Compara sem acento/maiúscula e por PEDAÇO do nome
+// ("fujiarte" pega "Fujiarte Co. Ltd" e "FUJIARTE"). Termo com menos de
+// 3 letras é ignorado de propósito — "ab" bloquearia metade do site por
+// acidente. Devolve o termo que bateu (pra mostrar no resumo) ou null.
+export function matchBlockedCompany(empresa, blockedList) {
+  const alvo = normalizeText(empresa);
+  if (!alvo) return null;
+  for (const termo of blockedList || []) {
+    const t = normalizeText(termo);
+    if (t.length >= 3 && alvo.includes(t)) return termo;
+  }
+  return null;
+}

@@ -19,6 +19,7 @@ import {
 
 import BannerCard, { BannerEditor } from "./components/BannerCard.jsx";
 import ExclusivePageBanner from "./components/ExclusivePageBanner.jsx";
+import BlockedCompaniesManager from "./components/BlockedCompaniesManager.jsx";
 import FilterBar from "./components/FilterBar.jsx";
 import { AlertBanner, AlertBannerEditor, WhatsAppAlertModal } from "./components/AlertBanner.jsx";
 import JobCard from "./components/JobCard.jsx";
@@ -371,7 +372,7 @@ export default function App() {
   const [indicacoesConfig, setIndicacoesConfig] = useState(INDICACOES_CONFIG_DEFAULT);
   // Ajustes gerais do site editáveis pelo Admin — começa só com
   // "dias até arquivar vaga sumida" (era fixo em 9 dias no código).
-  const [siteConfig, setSiteConfig] = useState({ staleThresholdDias: 9 });
+  const [siteConfig, setSiteConfig] = useState({ staleThresholdDias: 9, blockedCompanies: [] });
 
   // Estatísticas de uso do site inteiro (Super Admin) — contadores
   // simples, sem cookies/rastreamento de pessoa. "SITE_STATS_DEFAULT"
@@ -1812,7 +1813,12 @@ export default function App() {
 
             {adminTab === "vagas" && (
               <div className="space-y-5">
-                <JSONImporter dbStatus={dbStatus} jobs={jobs} registeredPartners={registeredPartners} onImported={handleBulkImport} />
+                <JSONImporter dbStatus={dbStatus} jobs={jobs} registeredPartners={registeredPartners} blockedCompanies={siteConfig.blockedCompanies} onImported={handleBulkImport} />
+
+                <BlockedCompaniesManager
+                  blocked={siteConfig.blockedCompanies || []}
+                  onChange={(list) => handleSiteConfigChange((prev) => ({ ...prev, blockedCompanies: list }))}
+                />
 
                 <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
                   <p className="nv-display flex items-center gap-1.5 text-[13px] font-bold text-amber-800">

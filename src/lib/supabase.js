@@ -507,11 +507,14 @@ export const supabaseAdapter = {
   async fetchSiteConfig() {
     const rows = await supabaseRequest("site_config?select=*&id=eq.1");
     if (!rows?.[0]) return null;
-    return { staleThresholdDias: rows[0].stale_threshold_dias ?? 9 };
+    return {
+      staleThresholdDias: rows[0].stale_threshold_dias ?? 9,
+      blockedCompanies: Array.isArray(rows[0].blocked_companies) ? rows[0].blocked_companies : [],
+    };
   },
   async upsertSiteConfig(config) {
     await dbWrite("site_config", "update", {
-      rows: { stale_threshold_dias: config.staleThresholdDias },
+      rows: { stale_threshold_dias: config.staleThresholdDias, blocked_companies: config.blockedCompanies ?? [] },
       match: { id: 1 },
     });
   },

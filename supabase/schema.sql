@@ -652,3 +652,13 @@ drop policy if exists "comunidade_banner_public_update" on public.comunidade_ban
 revoke update on public.banner from anon, authenticated;
 revoke update on public.alerta_banner from anon, authenticated;
 revoke update on public.comunidade_banner from anon, authenticated;
+
+-- =============================================================
+-- v29 — "Empresas bloqueadas" no importador de JSON: lista de nomes
+-- (ou pedaços de nome) de empresas cujas vagas NUNCA entram na lista de
+-- revisão da importação — pedido depois do caso Fujiarte (vagas dela
+-- continuavam subindo a cada JSON do scraper e, por cima, reimportar
+-- desarquiva vaga que já tinha sido arquivada). Guardado no mesmo
+-- singleton site_config (escrita só via gateway/Admin, igual o resto).
+-- =============================================================
+alter table public.site_config add column if not exists blocked_companies jsonb not null default '[]'::jsonb;
