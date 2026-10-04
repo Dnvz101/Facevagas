@@ -617,3 +617,38 @@ alter table public.parceiros add column if not exists signup_ip text;
 alter table public.parceiros add column if not exists email_verificado boolean not null default false;
 alter table public.parceiros add column if not exists email_verify_token text;
 alter table public.parceiros add column if not exists email_verify_token_exp timestamptz;
+
+-- =============================================================
+-- v28 — FECHA o buraco deixado de propósito como "modo protótipo"
+-- (ver aviso ⚠️ acima, nunca resolvido antes do site ir ao ar de
+-- verdade): "vagas_public_insert", "vagas_public_delete",
+-- "parceiros_public_write" e "planos_public_write" deixavam
+-- QUALQUER UM com a chave anon (pública, dentro do código do site)
+-- inserir/apagar vaga, cadastrar/alterar parceiro (inclusive senha —
+-- só a LEITURA da senha era bloqueada, nunca a escrita) e mudar plano/
+-- preço, sem login nenhum, direto na API do Supabase, por fora do
+-- gateway (api/db-write.js) inteiro.
+--
+-- Conferido antes de aplicar: o único código do site que ainda
+-- escreve com a chave anon (não pelo gateway) é o contador de
+-- clique/view de vaga (4 colunas específicas, grant já restrito
+-- desde antes), o RPC increment_vaga_clicks, inscrição em alerta de
+-- vaga, e o contador de site_stats — nenhum desses mexe nas tabelas
+-- fechadas aqui. Fechar isso não tira função nenhuma do site.
+-- =============================================================
+drop policy if exists "vagas_public_insert" on public.vagas;
+drop policy if exists "vagas_public_delete" on public.vagas;
+revoke insert, delete on public.vagas from anon, authenticated;
+
+drop policy if exists "parceiros_public_write" on public.parceiros;
+revoke insert, update, delete on public.parceiros from anon, authenticated;
+
+drop policy if exists "planos_public_write" on public.planos;
+revoke insert, update, delete on public.planos from anon, authenticated;
+
+drop policy if exists "banner_public_update" on public.banner;
+drop policy if exists "alerta_banner_public_update" on public.alerta_banner;
+drop policy if exists "comunidade_banner_public_update" on public.comunidade_banner;
+revoke update on public.banner from anon, authenticated;
+revoke update on public.alerta_banner from anon, authenticated;
+revoke update on public.comunidade_banner from anon, authenticated;

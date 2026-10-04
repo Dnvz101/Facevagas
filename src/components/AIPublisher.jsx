@@ -15,6 +15,7 @@ import { DESCRIPTION_MAX_CHARS, clampDescription, parseSalaryRange, reconcileSal
 import { formatYen } from "../utils/format.js";
 import { BADGE_DEFS } from "../config/badgeDefs.js";
 import { QUOTA_BADGE_MAP, QUOTA_USAGE_KEY_MAP } from "../hooks/usePermissions.js";
+import { getActiveSessionToken } from "../lib/session.js";
 
 export const emptyForm = {
   empresa: "", cargo: "", cidade: "", provincia: "", salarioHora: "", salarioMax: "", turno: "",
@@ -28,26 +29,12 @@ export const emptyForm = {
   idadeMaxima: "", semLimiteIdade: false,
 };
 
-const EXTRACTION_PROMPT = `Você é um assistente de extração de dados para um portal de vagas de emprego no Japão.
-Analise SOMENTE o conteúdo real fornecido (imagem de um print de anúncio de vaga e/ou texto colado) e extraia os dados encontrados.
-
-Regras estritas:
-- NUNCA invente, deduza ou complete informação que não esteja explicitamente visível no conteúdo fornecido.
-- Se um campo não aparecer no conteúdo, retorne uma string vazia "" para ele.
-- Responda ESTRITAMENTE em JSON puro, sem markdown, sem texto antes ou depois, sem crases.
-
-Formato exato esperado:
-{"empresa":"","cargo":"","cidade":"","provincia":"","salarioHora":"","turno":"","nihongo":"","moradia":"","vagaHomens":"","vagaMulheres":"","conducao":"","tags":"","telefone":"","whatsapp":"","descricao":"","idadeMaxima":""}
-
-"salarioHora" deve conter APENAS dígitos, sem símbolo ¥ e sem separador de milhar (ex: "1500").
-"vagaHomens" e "vagaMulheres" devem ser exatamente "Sim" ou "Não".
-"tags" deve ser uma lista curta separada por vírgula com as palavras-chave mais relevantes do anúncio.
-"descricao" deve ser um RESUMO CURTO e fiel, em português, do texto do anúncio (funções, requisitos e condições principais).
-Regra de tamanho obrigatória: no MÁXIMO 220 caracteres (aproximadamente 2 a 3 frases curtas). Priorize as informações mais importantes e corte o resto — não ultrapasse o limite, e não adicione nada que não esteja no conteúdo original.
-"idadeMaxima" — SÓ preencha quando o anúncio mencionar idade explicitamente (nunca deduza pela ausência de menção):
-  - Se o anúncio disser um número de idade de qualquer jeito ("até 55 anos", "no máximo 50", "acima de 60 anos", "a partir de 50 anos", "~60 anos", "60 anos ou mais"), retorne APENAS esse número (ex: "55"), mesmo quando não for um teto rígido.
-  - Se o anúncio disser "sem limite de idade", "sem restrição de idade" ou "qualquer idade" (sem dar nenhum número), retorne a string exata "sem limite".
-  - Se o anúncio não mencionar idade de jeito nenhum, retorne "".`;
+// O prompt de extração (EXTRACTION_PROMPT) morava aqui antes — mudou
+// pra dentro de api/anthropic.js (fixo no servidor) numa revisão de
+// segurança: o endpoint aceitava "system" vindo do navegador, o que
+// permitia qualquer um (sem login) usar a chave da Anthropic pra
+// qualquer prompt, não só extrair vaga. Ver api/anthropic.js pro texto
+// de verdade.
 
 export default function AIPublisher({ onPublish, currentPlan, planKey, canUseBadge, quotaUsage, prefill = {}, lockedFields = [], autoNovo = false }) {
   const [pastedText, setPastedText] = useState("");
@@ -159,16 +146,21 @@ export default function AIPublisher({ onPublish, currentPlan, planKey, canUseBad
 
       // Chama nosso próprio proxy de servidor (api/anthropic.js), não a
       // Anthropic direto — é lá que a chave de verdade fica escondida.
+      // Manda a sessão ativa (admin OU parceiro) — o endpoint agora
+      // exige login, e o prompt de extração já mora fixo lá no
+      // servidor (não manda mais "system" daqui: achado numa revisão
+      // de segurança que isso era um proxy aberto pra qualquer prompt).
       const response = await fetch("/api/anthropic", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          token: getActiveSessionToken(),
           max_tokens: 1000,
-          system: EXTRACTION_PROMPT,
           messages: [{ role: "user", content }],
         }),
       });
 
+      if (response.status === 401) throw new Error("Sessão expirada — faça login de novo.");
       if (!response.ok) throw new Error(`Falha na API (${response.status})`);
 
       const data = await response.json();

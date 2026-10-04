@@ -1793,3 +1793,69 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   tocados. Não testado (não dá, sem credencial real): envio de e-mail
   de verdade pela Resend, e o limite de cadastro por IP contra um
   Supabase real. `npm run build` limpo, `main.jsx` restaurado.
+
+## 🔴 v2.6.51 — 2 falhas críticas achadas numa auditoria (post do Instagram sobre apps feitos com IA)
+- [x] Usuário mandou um post listando 8 falhas comuns em apps feitos
+      com ferramenta de IA (Lovable, Bolt, Replit). Conferi os 8 um
+      por um no projeto, com código na mão — achei 2 críticas
+      confirmadas, ainda ativas, nunca corrigidas.
+- [x] **CRÍTICO 1 — banco sem regra de acesso de verdade**: o próprio
+      `schema.sql` já tinha um aviso escrito meses atrás ("⚠️ POLÍTICAS
+      ABERTAS DE ESCRITA — modo protótipo... antes de divulgar o site
+      publicamente, troque por...") que nunca foi resolvido, mesmo o
+      site já estando no ar com anúncio pago rodando. `vagas_public_
+      insert`, `vagas_public_delete` e principalmente `parceiros_
+      public_write`/`planos_public_write` (`for all using (true) with
+      check (true)`) deixavam QUALQUER PESSOA, usando só a chave anon
+      (pública, dentro do bundle JS do site), inserir/apagar vaga,
+      cadastrar ou **alterar qualquer parceiro — inclusive a senha**
+      (só a LEITURA da senha era bloqueada, nunca a escrita) — e mudar
+      preço/cota de plano. Tudo isso por fora do `api/db-write.js`
+      inteiro, sem precisar de sessão nenhuma.
+- [x] Corrigido (schema v28): removidas as políticas de RLS
+      perigosas + `revoke insert/update/delete` de `anon` e
+      `authenticated` em `vagas` (insert/delete), `parceiros` (tudo),
+      `planos` (tudo), e a família `banner`/`alerta_banner`/
+      `comunidade_banner` (update). Conferido ANTES de aplicar: o
+      único código do site que ainda escreve direto com a chave anon
+      é o contador de clique/view (4 colunas específicas, grant já
+      restrito desde antes), o RPC de incrementar clique, inscrição
+      em alerta de vaga, e o contador de `site_stats` — nenhum desses
+      é afetado. Fechar isso não tira NENHUMA função do site, porque
+      tudo que a interface usa de verdade já passa pelo gateway.
+- [x] **CRÍTICO 2 — proxy aberto da IA (prompt injection)**:
+      `api/anthropic.js` (o motor do Publicador Mágico) não conferia
+      sessão NENHUMA, e aceitava o "system" (o prompt inteiro) vindo
+      direto do corpo da requisição — ou seja, qualquer pessoa na
+      internet, sem login, podia chamar esse endpoint com qualquer
+      prompt e gastar a chave da Anthropic (paga pelo dono do site)
+      pra qualquer finalidade, não só extrair vaga.
+- [x] Corrigido em duas camadas: (1) exige sessão válida (admin OU
+      parceiro) via `verifySession` — sem token, nem chega a tentar
+      chamar a Anthropic; (2) o prompt de extração saiu do
+      `AIPublisher.jsx` (onde virava parte do pacote enviado pelo
+      navegador) e foi fixado dentro do PRÓPRIO `api/anthropic.js` —
+      o navegador manda só o conteúdo (imagem/texto) a partir de
+      agora, nunca mais o "system". Mesmo um parceiro legítimo e
+      logado não consegue mais redefinir a tarefa desse endpoint.
+      Texto do prompt copiado verbatim (não recriado de memória) pra
+      não mudar o comportamento de extração.
+- [x] Os outros 6 itens do post, conferidos e já ok ou de risco
+      baixo: XSS (nenhum `dangerouslySetInnerHTML`/`eval` no projeto),
+      chave de API no front (limpo — só URL/anon key do Supabase, que
+      são feitas pra ser públicas), SQL injection (não há SQL cru, é
+      PostgREST; achado um ponto baixo — valor de `match` no gateway
+      vem do pedido do navegador sem validar formato, vale revisar
+      depois), pacotes inventados (todas as 7 dependências do
+      `package.json` são reais e conhecidas). Login sem limite de
+      tentativa confirmado como gap médio, ainda não corrigido nesta
+      versão — fica registrado pra decidir depois.
+- Testado: (1) conferido com `grep`/leitura de código que nenhum
+  caminho do site ainda escreve direto nas tabelas fechadas, antes de
+  aplicar a migração; (2) o portão de sessão do `api/anthropic.js`
+  testado chamando a função direto (sem precisar subir servidor): sem
+  token → bloqueado no MEU portão (mensagem em português, nunca sai
+  pro Anthropic); token adulterado → mesmo bloqueio; token válido →
+  passa do portão e a requisição chega de verdade na API da Anthropic
+  (confirmado pelo formato do erro deles, diferente do meu, usando
+  uma chave de teste inválida de propósito). `npm run build` limpo.
