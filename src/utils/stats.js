@@ -45,3 +45,14 @@ export function computeImpactMultiplier(jobs, matcher) {
   if (rateWith === null || rateWithout === null || rateWithout === 0) return null;
   return rateWith / rateWithout;
 }
+
+// Versão detalhada — devolve também o tamanho da amostra (vagas, exibições,
+// cliques) pra tela mostrar "0 cliques em 3 vagas / 41 exib." em vez de um
+// "0.0x" seco, que parece bug quando na real é só amostra pequena
+// (ex: poucas vagas com Destaque/Nova Vaga ligadas agora, ainda sem clique).
+export function computeImpactDetail(jobs, matcher) {
+  const group = jobs.filter(matcher);
+  const clicks = group.reduce((s, j) => s + (j.clicks || 0), 0);
+  const views = group.reduce((s, j) => s + (j.views || 0), 0);
+  return { multiplier: computeImpactMultiplier(jobs, matcher), vagas: group.length, clicks, views };
+}

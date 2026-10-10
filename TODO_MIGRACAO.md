@@ -1898,3 +1898,6 @@ grant update (clicks, views, favoritos, daily_stats) on public.vagas to anon;
   certas publicadas), JSON 100% bloqueado, e o gerenciador (recusa
   termo curto e duplicata com outra caixa, adiciona, remove).
   `npm run build` limpo, `main.jsx` restaurado.
+
+## v2.6.53 — Impacto dos Selos mostra amostra
+- Painel Admin "Impacto dos Selos": 0.0x (Destaque / Nova Vaga) era grupo pequeno com exibições mas 0 cliques, não erro de conta. Agora mostra "sem cliques" + "N vagas · V exib. · C cliques" (stats.js: computeImpactDetail). Sem SQL.

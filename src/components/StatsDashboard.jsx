@@ -5,7 +5,7 @@
 
 import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { computeImpactMultiplier } from "../utils/stats.js";
+import { computeImpactMultiplier, computeImpactDetail } from "../utils/stats.js";
 import { MAIN_TAB_LABELS } from "../config/constants.js";
 
 export default function StatsDashboard({ siteStats, jobs }) {
@@ -39,12 +39,12 @@ export default function StatsDashboard({ siteStats, jobs }) {
   );
   const impactBadges = useMemo(
     () => [
-      { label: "🔥 Destaque", value: computeImpactMultiplier(jobs, (j) => j.isFixado) },
-      { label: "⚡ Urgente", value: computeImpactMultiplier(jobs, (j) => j.isUrgente) },
-      { label: "⭐ Recomendado", value: computeImpactMultiplier(jobs, (j) => j.isRecomendado) },
-      { label: "🆕 Nova Vaga", value: computeImpactMultiplier(jobs, (j) => j.isNovo) },
-      { label: "✔️ Verificado", value: computeImpactMultiplier(jobs, (j) => j.seloVerificado) },
-      { label: "💎 Top Salário", value: computeImpactMultiplier(jobs, (j) => j.isTopSalario) },
+      { label: "🔥 Destaque", ...computeImpactDetail(jobs, (j) => j.isFixado) },
+      { label: "⚡ Urgente", ...computeImpactDetail(jobs, (j) => j.isUrgente) },
+      { label: "⭐ Recomendado", ...computeImpactDetail(jobs, (j) => j.isRecomendado) },
+      { label: "🆕 Nova Vaga", ...computeImpactDetail(jobs, (j) => j.isNovo) },
+      { label: "✔️ Verificado", ...computeImpactDetail(jobs, (j) => j.seloVerificado) },
+      { label: "💎 Top Salário", ...computeImpactDetail(jobs, (j) => j.isTopSalario) },
     ],
     [jobs]
   );
@@ -68,8 +68,13 @@ export default function StatsDashboard({ siteStats, jobs }) {
         <div className="grid grid-cols-2 gap-2">
           {impactBadges.map((b) => (
             <div key={b.label} className="rounded-xl bg-white p-2.5 text-center">
-              <p className="nv-display text-[15px] font-extrabold text-slate-800">{b.value === null ? "—" : `${b.value.toFixed(1)}x`}</p>
+              <p className="nv-display text-[15px] font-extrabold text-slate-800">
+                {b.multiplier === null ? "—" : b.multiplier === 0 ? "sem cliques" : `${b.multiplier.toFixed(1)}x`}
+              </p>
               <p className="nv-body text-[10px] text-slate-500">{b.label}</p>
+              <p className="nv-body text-[9px] text-slate-400">
+                {b.vagas === 0 ? "nenhuma vaga com o selo" : `${b.vagas} vaga${b.vagas > 1 ? "s" : ""} · ${b.views} exib. · ${b.clicks} cliques`}
+              </p>
             </div>
           ))}
         </div>
